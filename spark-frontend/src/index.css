@@ -1,0 +1,366 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ...rest of your existing index.css content stays unchanged below this */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+#emergent-badge {
+    display: none !important;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    line-height: 1.6;
+    color: #1a1a1a;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+}
+code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
+}
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 0 0% 10%;
+        --card: 0 0% 98%;
+        --card-foreground: 0 0% 10%;
+        --popover: 0 0% 98%;
+        --popover-foreground: 0 0% 10%;
+        --primary: 240 98% 28%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 0 0% 80%;
+        --secondary-foreground: 0 0% 9%;
+        --muted: 0 0% 96%;
+        --muted-foreground: 0 0% 45%;
+        --accent: 0 0% 96%;
+        --accent-foreground: 0 0% 9%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 0 0% 98%;
+        --border: 0 0% 90%;
+        --input: 0 0% 90%;
+        --ring: 240 98% 28%;
+        --radius: 0.5rem;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-white text-gray-900;
+    }
+}
+
+/* Logo-inspired curved shapes */
+.curve-top {
+    clip-path: ellipse(100% 100% at 50% 0%);
+}
+
+.curve-bottom {
+    clip-path: ellipse(100% 100% at 50% 100%);
+}
+
+.swirl-shape {
+    border-radius: 30% 70% 70% 30% / 30% 30% 70% 70%;
+}
+
+/* Animated swirl background */
+@keyframes swirl-rotate {
+    0% {
+        transform: rotate(0deg) scale(1);
+    }
+    50% {
+        transform: rotate(180deg) scale(1.1);
+    }
+    100% {
+        transform: rotate(360deg) scale(1);
+    }
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0px);
+    }
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(2, 2, 139, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 40px rgba(2, 2, 139, 0.6);
+    }
+}
+
+@keyframes slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes scale-in {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.animate-swirl {
+    animation: swirl-rotate 20s ease-in-out infinite;
+}
+
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+    animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.animate-slide-down {
+    animation: slide-down 0.3s ease-out;
+}
+
+.animate-fade-in-up {
+    animation: fade-in-up 0.6s ease-out forwards;
+}
+
+.animate-scale-in {
+    animation: scale-in 0.5s ease-out forwards;
+}
+
+/* Delay classes for staggered animations */
+.delay-100 { animation-delay: 0.1s; }
+.delay-200 { animation-delay: 0.2s; }
+.delay-300 { animation-delay: 0.3s; }
+.delay-400 { animation-delay: 0.4s; }
+.delay-500 { animation-delay: 0.5s; }
+
+/* Gradient text */
+.text-gradient-blue {
+    background: linear-gradient(135deg, #02028B 0%, #0066FF 50%, #00CCFF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.text-gradient-silver {
+    background: linear-gradient(135deg, #CCCCCC 0%, #E8E8E8 50%, #A0A0A0 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Morphing blob shapes */
+@keyframes morph {
+    0%, 100% {
+        border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+    }
+    25% {
+        border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%;
+    }
+    50% {
+        border-radius: 50% 60% 30% 60% / 30% 60% 70% 40%;
+    }
+    75% {
+        border-radius: 60% 40% 60% 40% / 70% 30% 60% 40%;
+    }
+}
+
+.blob-morph {
+    animation: morph 8s ease-in-out infinite;
+}
+
+/* Smooth transitions */
+.transition-smooth {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Scroll reveal */
+.scroll-reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.scroll-reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(40px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fade-in 1s ease-out forwards;
+}
+
+.animate-slide-up {
+    animation: slide-up 1s ease-out forwards;
+}
+
+/* Partner logos marquee */
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+    100% {
+        transform: translateX(-100%);
+    }
+}
+
+.animate-marquee {
+    animation: marquee 25s linear infinite;
+}
+
+/* ===== PAGE TRANSITION ANIMATIONS ===== */
+.page-enter {
+    opacity: 0;
+    transform: translateY(30px);
+}
+
+.page-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ===== SCROLL REVEAL ANIMATIONS ===== */
+.reveal-on-scroll {
+    opacity: 0;
+    transform: translateY(40px);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.reveal-on-scroll.revealed {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Slide from left */
+.reveal-on-scroll.from-left {
+    transform: translateX(-50px);
+}
+.reveal-on-scroll.from-left.revealed {
+    transform: translateX(0);
+}
+
+/* Slide from right */
+.reveal-on-scroll.from-right {
+    transform: translateX(50px);
+}
+.reveal-on-scroll.from-right.revealed {
+    transform: translateX(0);
+}
+
+/* Scale up */
+.reveal-on-scroll.scale-up {
+    transform: scale(0.9);
+}
+.reveal-on-scroll.scale-up.revealed {
+    transform: scale(1);
+}
+
+/* Stagger delays for children */
+.reveal-on-scroll.delay-1 { transition-delay: 0.1s; }
+.reveal-on-scroll.delay-2 { transition-delay: 0.2s; }
+.reveal-on-scroll.delay-3 { transition-delay: 0.3s; }
+.reveal-on-scroll.delay-4 { transition-delay: 0.4s; }
+.reveal-on-scroll.delay-5 { transition-delay: 0.5s; }
+.reveal-on-scroll.delay-6 { transition-delay: 0.6s; }
+
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.3);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.animated-border {
+  background: linear-gradient(
+    90deg,
+    #02028b,
+    #d4af37,
+    #02028b
+  );
+  background-size: 200% 200%;
+  animation: borderFlow 3s linear infinite;
+  box-shadow:
+    0 0 10px rgba(2, 2, 139, 0.3),
+    0 0 20px rgba(212, 175, 55, 0.2);
+}
+
+@keyframes borderFlow {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 200% 50%;
+  }
+}
+
