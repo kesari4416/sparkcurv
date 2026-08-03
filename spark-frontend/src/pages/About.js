@@ -17,7 +17,7 @@ const About = () => {
     {
       name: 'Merbin Bejo',
       role: 'Project Manager - AI/ML Engineer',
-      image: '/images/team/mem-3.png',
+      image: '/images/team/IMG_4214.JPG',
     },
     {
       name: 'Anu Sreekumar',
