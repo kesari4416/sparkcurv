@@ -15,8 +15,8 @@ const About = () => {
       image: '/images/team/mem-1.png',
     },
     {
-      name: 'Veera Sarma',
-      role: 'Technical Lead',
+      name: 'Merbin Bejo',
+      role: 'Project Manager - AI/ML Engineer',
       image: '/images/team/mem-3.png',
     },
     {
@@ -240,7 +240,7 @@ const About = () => {
           },
           {
             question: "Where are you located?",
-            answer: "Nagercoil & Bangalore."
+            answer: "Nagercoil"
           }
         ]}
       />
