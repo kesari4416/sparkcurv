@@ -92,15 +92,6 @@ const Footer = () => {
                   Nagercoil, Tamil Nadu 629001
                 </p>
               </div>
-              
-              <div>
-                <p className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-1">Bangalore</p>
-                <p className="text-sm text-blue-200">
-                  BMTC Complex, Outer Ring Rd,<br />
-                  Bengaluru, Karnataka 560068
-                </p>
-              </div>
-
               <div className="flex items-center space-x-3 text-sm pt-1">
                 <Mail className="w-4 h-4 flex-shrink-0 text-blue-300" />
                 <a href="mailto:sales@sparkcurv.com" className="text-blue-200 hover:text-white transition-colors">
@@ -109,8 +100,8 @@ const Footer = () => {
               </div>
               <div className="flex items-center space-x-3 text-sm">
                 <Phone className="w-4 h-4 flex-shrink-0 text-blue-300" />
-                <a href="tel:+919043765028" className="text-blue-200 hover:text-white transition-colors">
-                  +91 9043765028
+                <a href="tel:+919677495028" className="text-blue-200 hover:text-white transition-colors">
+                  +91 9677495028
                 </a>
               </div>
             </div>
@@ -119,7 +110,7 @@ const Footer = () => {
 
         <div className="border-t border-white/10 mt-12 pt-8 text-center">
           <p className="text-blue-300 text-xs">
-            Copyright SparkCurv © 2025. All Rights Reserved.
+            Copyright SparkCurv © 2026. All Rights Reserved.
           </p>
         </div>
       </div>
