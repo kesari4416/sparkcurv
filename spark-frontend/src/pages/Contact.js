@@ -130,22 +130,6 @@ const Contact = () => {
                   </div>
                 </div>
 
-                {/* Sales Office - Bangalore */}
-                <div>
-                  <div className="flex items-start space-x-4 mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
-                      <MapPin className="w-6 h-6 text-[#02028B]" />
-                    </div>
-                    <div>
-                      <h3 className="text-gray-900 font-bold mb-2 text-lg">Sales Office - Bangalore</h3>
-                      <p className="text-gray-600 leading-relaxed">
-                        BMTC Complex, Outer Ring Rd,<br />
-                        Bengaluru, Karnataka 560068
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="border-t border-gray-200 pt-6 space-y-4">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center flex-shrink-0">
@@ -169,10 +153,10 @@ const Contact = () => {
                     <div>
                       <h3 className="text-gray-900 font-semibold mb-1">Phone</h3>
                       <a
-                        href="tel:+919043765028"
+                        href="tel:+919677495028"
                         className="text-gray-600 hover:text-[#02028B] transition-colors"
                       >
-                        +91 9043765028
+                        +91 9677495028
                       </a>
                     </div>
                   </div>
