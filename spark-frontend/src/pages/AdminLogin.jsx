@@ -57,7 +57,7 @@ const AdminLogin = () => {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   required
-                  placeholder="admin@sparkcurv.com"
+                  placeholder="Enter your email"
                   className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#02028B]/30 focus:border-[#02028B] transition-all"
                 />
               </div>
