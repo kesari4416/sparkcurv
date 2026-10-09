@@ -59,11 +59,15 @@
 - [x] Published/Draft toggle
 - [x] Public blog listing
 
-### Completed in Session 3 (Oct 9, 2026)
-- [x] Cover image upload (drag-and-drop + URL fallback, 5MB limit, stored in MongoDB)
-- [x] Rich text image embed (Image toolbar button → uploads → inserts inline img)
-- [x] Blog post preview modal (read-only pre-save preview with all fields rendered)
-- [x] GET /api/images/{id} image serving endpoint
+### Completed in Session 4 (Oct 9, 2026)
+- [x] PDF Blog Template download (GET /api/blog-template/pdf via fpdf2)
+  - Sections: Basic Info, Excerpt, Content (5 sub-sections), SEO, Publish Status, Notes
+  - "Template" button in admin header downloads sparkcurv-blog-template.pdf
+- [x] Rich Text Color picker (16-color popover palette)
+- [x] Rich Text Font Size selector (Small / Normal / Large / X-Large / Huge)
+- [x] Image Gallery (Media tab + gallery modal shared across cover uploader and RTE)
+- [x] Blog Tags (add/remove tags, tag filter bar on public /blog, tag badges on post page)
+- [x] Multiple Admin Users (Team tab — add/remove admins, protected self-delete)
 
 ### P1 - Should Have (Next)
 - [ ] Multiple admin users / user management
