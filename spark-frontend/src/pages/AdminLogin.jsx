@@ -32,7 +32,7 @@ const AdminLogin = () => {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <img src="/images/logo/sparkcurv1.png" alt="SparkCurv" className="h-10 mx-auto mb-4" style={{ mixBlendMode: 'multiply' }} />
+          <img src="/images/logo/sparkcurv1.png" alt="SparkCurv" style={{ width: '140px', height: 'auto', mixBlendMode: 'multiply' }} className="mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
           <p className="text-gray-500 text-sm mt-1">Sign in to manage blog content</p>
         </div>
