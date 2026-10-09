@@ -1,5 +1,6 @@
 aiohappyeyeballs==2.7.1
 aiohttp==3.14.4
+aiomysql==0.3.2
 aiosignal==1.4.0
 annotated-doc==0.0.5
 annotated-types==0.8.0
@@ -89,6 +90,7 @@ pyflakes==4.0.2
 Pygments==2.21.0
 PyJWT==2.15.1
 pymongo==4.6.3
+PyMySQL==1.2.3
 pyparsing==3.3.3
 pytest==9.1.1
 pytest-xdist==3.8.0
