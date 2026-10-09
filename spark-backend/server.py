@@ -674,6 +674,10 @@ async def startup():
 async def seed_admin():
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@sparkcurv.com").lower()
     admin_password = os.environ.get("ADMIN_PASSWORD", "SparkAdmin@2024")
+
+    # Remove any admin accounts that don't match the configured email
+    await db.users.delete_many({"role": "admin", "email": {"$ne": admin_email}})
+
     existing = await db.users.find_one({"email": admin_email})
     if existing is None:
         await db.users.insert_one({
