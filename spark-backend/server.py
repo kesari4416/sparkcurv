@@ -105,6 +105,8 @@ class BlogCreate(BaseModel):
     author: str = "SparkCurv Team"
     category: str = "Technology"
     published: bool = True
+    meta_title: Optional[str] = ""
+    meta_description: Optional[str] = ""
 
 class BlogUpdate(BaseModel):
     title: Optional[str] = None
@@ -115,6 +117,8 @@ class BlogUpdate(BaseModel):
     author: Optional[str] = None
     category: Optional[str] = None
     published: Optional[bool] = None
+    meta_title: Optional[str] = None
+    meta_description: Optional[str] = None
 
 
 # ─── Auth Endpoints ───────────────────────────────────────────────────────────
@@ -185,6 +189,8 @@ async def create_blog(data: BlogCreate, admin=Depends(get_current_admin)):
         "author": data.author,
         "category": data.category,
         "published": data.published,
+        "meta_title": data.meta_title or "",
+        "meta_description": data.meta_description or "",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
