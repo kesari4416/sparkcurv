@@ -59,17 +59,13 @@
 - [x] Published/Draft toggle
 - [x] Public blog listing
 
-### Completed in Session 2 (Oct 9, 2026)
-- [x] SEO fields per blog (meta_title, meta_description with char counters)
-- [x] Blog search + category + status filters in admin
-- [x] Contact leads tab in admin (expandable rows, WhatsApp/email quick-reply)
+### Completed in Session 3 (Oct 9, 2026)
+- [x] Cover image upload (drag-and-drop + URL fallback, 5MB limit, stored in MongoDB)
+- [x] Rich text image embed (Image toolbar button → uploads → inserts inline img)
+- [x] Blog post preview modal (read-only pre-save preview with all fields rendered)
+- [x] GET /api/images/{id} image serving endpoint
 
 ### P1 - Should Have (Next)
-- [ ] Blog image upload (actual file upload vs URL)
-- [ ] Rich text image embed
-- [ ] Blog preview before publish
-
-### P2 - Nice to Have
-- [ ] Markdown support
-- [ ] Multiple admin users
-- [ ] Blog tags/labels
+- [ ] Multiple admin users / user management
+- [ ] Blog tags/labels for better categorization
+- [ ] Rich text color picker / font size controls

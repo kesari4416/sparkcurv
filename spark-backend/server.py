@@ -1,7 +1,8 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
+from fastapi.responses import Response as FastAPIResponse
 from starlette.middleware.cors import CORSMiddleware
 import os
 import logging
@@ -18,6 +19,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import re
 import secrets
+import base64
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -226,6 +228,42 @@ async def delete_blog(blog_id: str, admin=Depends(get_current_admin)):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Blog not found")
     return {"message": "Blog deleted"}
+
+
+# ─── Image Upload Endpoints ───────────────────────────────────────────────────
+
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024  # 5 MB
+
+@api_router.post("/upload/image")
+async def upload_image(file: UploadFile = File(...), admin=Depends(get_current_admin)):
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, GIF, and WebP images are allowed")
+    data = await file.read()
+    if len(data) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=400, detail="Image must be under 5 MB")
+    b64 = base64.b64encode(data).decode("utf-8")
+    doc = {
+        "filename": file.filename,
+        "content_type": file.content_type,
+        "data": b64,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = await db.images.insert_one(doc)
+    image_id = str(result.inserted_id)
+    return {"url": f"/api/images/{image_id}", "id": image_id}
+
+@api_router.get("/images/{image_id}")
+async def get_image(image_id: str):
+    try:
+        oid = ObjectId(image_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid image ID")
+    doc = await db.images.find_one({"_id": oid})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Image not found")
+    image_data = base64.b64decode(doc["data"])
+    return FastAPIResponse(content=image_data, media_type=doc["content_type"])
 
 
 # ─── Contact Endpoints ────────────────────────────────────────────────────────
