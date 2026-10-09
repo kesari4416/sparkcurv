@@ -1,51 +1,92 @@
-from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
+load_dotenv()
+
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends
 from starlette.middleware.cors import CORSMiddleware
 import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
-from typing import List, Optional
-import uuid
-from datetime import datetime, timezone
-import aiomysql
+from typing import List, Optional, Annotated
+from bson import ObjectId
+from motor.motor_asyncio import AsyncIOMotorClient
+import bcrypt
+import jwt
+from datetime import datetime, timezone, timedelta
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import re
+import secrets
 
-ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
-# MySQL config
-MYSQL_HOST = os.environ.get('MYSQL_HOST', 'localhost')
-MYSQL_PORT = int(os.environ.get('MYSQL_PORT', 3306))
-MYSQL_USER = os.environ.get('MYSQL_USER', 'spark')
-MYSQL_PASSWORD = os.environ.get('MYSQL_PASSWORD', '')
-MYSQL_DATABASE = os.environ.get('MYSQL_DATABASE', 'spark_db')
+MONGO_URL = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+DB_NAME = os.environ.get("DB_NAME", "sparkcurv_db")
+JWT_SECRET = os.environ["JWT_SECRET"]
+JWT_ALGORITHM = "HS256"
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+SMTP_EMAIL = os.environ.get("SMTP_EMAIL", "")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+NOTIFY_EMAIL = os.environ.get("NOTIFY_EMAIL", "")
 
-# Email config
-SMTP_EMAIL = os.environ.get('SMTP_EMAIL', '')
-SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
-NOTIFY_EMAIL = os.environ.get('NOTIFY_EMAIL', '')
-
-# Connection pool
-pool = None
+client = AsyncIOMotorClient(MONGO_URL)
+db = client[DB_NAME]
 
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 
-# Models
-class ContactSubmission(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-    id: int = 0
-    name: str = ""
-    email: str = ""
-    mobile: str = ""
-    whatsapp: str = ""
-    services: str = ""
-    description: str = ""
-    created_at: str = ""
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+def verify_password(plain: str, hashed: str) -> bool:
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
+
+def create_access_token(user_id: str, email: str) -> str:
+    payload = {
+        "sub": user_id, "email": email,
+        "exp": datetime.now(timezone.utc) + timedelta(hours=8),
+        "type": "access"
+    }
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def slugify(text: str) -> str:
+    text = text.lower().strip()
+    text = re.sub(r'[^\w\s-]', '', text)
+    text = re.sub(r'[\s_-]+', '-', text)
+    return text
+
+async def get_current_admin(request: Request):
+    token = request.cookies.get("access_token")
+    if not token:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token = auth[7:]
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        if payload.get("type") != "access":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+        if not user or user.get("role") != "admin":
+            raise HTTPException(status_code=403, detail="Admin access required")
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+# ─── Models ───────────────────────────────────────────────────────────────────
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
 
 class ContactSubmissionCreate(BaseModel):
     name: str
@@ -55,188 +96,254 @@ class ContactSubmissionCreate(BaseModel):
     services: str
     description: str
 
+class BlogCreate(BaseModel):
+    title: str
+    slug: Optional[str] = None
+    excerpt: str
+    content: str
+    image_url: Optional[str] = ""
+    author: str = "SparkCurv Team"
+    category: str = "Technology"
+    published: bool = True
 
-# Database helpers
-async def get_pool():
-    global pool
-    if pool is None:
-        pool = await aiomysql.create_pool(
-            host=MYSQL_HOST,
-            port=MYSQL_PORT,
-            user=MYSQL_USER,
-            password=MYSQL_PASSWORD,
-            db=MYSQL_DATABASE,
-            autocommit=True,
-            minsize=1,
-            maxsize=10,
-        )
-    return pool
+class BlogUpdate(BaseModel):
+    title: Optional[str] = None
+    slug: Optional[str] = None
+    excerpt: Optional[str] = None
+    content: Optional[str] = None
+    image_url: Optional[str] = None
+    author: Optional[str] = None
+    category: Optional[str] = None
+    published: Optional[bool] = None
 
+
+# ─── Auth Endpoints ───────────────────────────────────────────────────────────
+
+@api_router.post("/auth/login")
+async def login(data: LoginRequest, response: Response):
+    user = await db.users.find_one({"email": data.email.lower()})
+    if not user or not verify_password(data.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    token = create_access_token(str(user["_id"]), user["email"])
+    response.set_cookie(
+        key="access_token", value=token,
+        httponly=True, secure=True, samesite="none", max_age=28800, path="/"
+    )
+    return {"id": str(user["_id"]), "email": user["email"], "name": user.get("name", ""), "role": user["role"]}
+
+@api_router.post("/auth/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token", path="/", samesite="none")
+    return {"message": "Logged out"}
+
+@api_router.get("/auth/me")
+async def me(admin=Depends(get_current_admin)):
+    return {"id": str(admin["_id"]), "email": admin["email"], "name": admin.get("name", ""), "role": admin["role"]}
+
+
+# ─── Blog Endpoints ───────────────────────────────────────────────────────────
+
+@api_router.get("/blogs")
+async def get_blogs(published_only: bool = True):
+    query = {"published": True} if published_only else {}
+    cursor = db.blogs.find(query).sort("created_at", -1)
+    posts = []
+    async for doc in cursor:
+        doc["id"] = str(doc.pop("_id"))
+        posts.append(doc)
+    return posts
+
+@api_router.get("/blogs/all")
+async def get_all_blogs(admin=Depends(get_current_admin)):
+    cursor = db.blogs.find({}).sort("created_at", -1)
+    posts = []
+    async for doc in cursor:
+        doc["id"] = str(doc.pop("_id"))
+        posts.append(doc)
+    return posts
+
+@api_router.get("/blogs/{slug}")
+async def get_blog(slug: str):
+    doc = await db.blogs.find_one({"slug": slug, "published": True})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Blog post not found")
+    doc["id"] = str(doc.pop("_id"))
+    return doc
+
+@api_router.post("/blogs")
+async def create_blog(data: BlogCreate, admin=Depends(get_current_admin)):
+    slug = data.slug or slugify(data.title)
+    existing = await db.blogs.find_one({"slug": slug})
+    if existing:
+        slug = f"{slug}-{secrets.token_hex(3)}"
+    doc = {
+        "title": data.title,
+        "slug": slug,
+        "excerpt": data.excerpt,
+        "content": data.content,
+        "image_url": data.image_url or "",
+        "author": data.author,
+        "category": data.category,
+        "published": data.published,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = await db.blogs.insert_one(doc)
+    doc["id"] = str(result.inserted_id)
+    doc.pop("_id", None)
+    return doc
+
+@api_router.put("/blogs/{blog_id}")
+async def update_blog(blog_id: str, data: BlogUpdate, admin=Depends(get_current_admin)):
+    try:
+        oid = ObjectId(blog_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid blog ID")
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if "title" in update_data and "slug" not in update_data:
+        update_data["slug"] = slugify(update_data["title"])
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.blogs.update_one({"_id": oid}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Blog not found")
+    doc = await db.blogs.find_one({"_id": oid})
+    doc["id"] = str(doc.pop("_id"))
+    return doc
+
+@api_router.delete("/blogs/{blog_id}")
+async def delete_blog(blog_id: str, admin=Depends(get_current_admin)):
+    try:
+        oid = ObjectId(blog_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid blog ID")
+    result = await db.blogs.delete_one({"_id": oid})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Blog not found")
+    return {"message": "Blog deleted"}
+
+
+# ─── Contact Endpoints ────────────────────────────────────────────────────────
+
+@api_router.post("/contact")
+async def submit_contact(data: ContactSubmissionCreate):
+    word_count = len(data.description.strip().split())
+    if word_count > 200:
+        raise HTTPException(status_code=400, detail="Description must be 200 words or less")
+    doc = {
+        "name": data.name, "email": data.email, "mobile": data.mobile,
+        "whatsapp": data.whatsapp, "services": data.services, "description": data.description,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    result = await db.contacts.insert_one(doc)
+    try:
+        send_enquiry_email(data)
+    except Exception as e:
+        logger.error(f"Email failed: {e}")
+    return {"id": str(result.inserted_id), "message": "Enquiry submitted successfully"}
+
+@api_router.get("/contact")
+async def get_contacts(admin=Depends(get_current_admin)):
+    cursor = db.contacts.find({}).sort("created_at", -1)
+    items = []
+    async for doc in cursor:
+        doc["id"] = str(doc.pop("_id"))
+        items.append(doc)
+    return items
+
+
+# ─── Health ────────────────────────────────────────────────────────────────────
 
 @api_router.get("/")
 async def root():
-    return {"message": "SparkCurv API", "database": "MySQL"}
+    return {"message": "SparkCurv API", "database": "MongoDB"}
 
+@api_router.get("/health")
+async def health():
+    try:
+        await client.admin.command("ping")
+        return {"status": "healthy", "database": "MongoDB connected"}
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}
+
+
+# ─── Email Helper ─────────────────────────────────────────────────────────────
 
 def send_enquiry_email(contact):
     if not SMTP_EMAIL or not SMTP_PASSWORD or not NOTIFY_EMAIL:
-        logger.warning("Email not configured, skipping notification")
+        logger.warning("Email not configured")
         return
-
     try:
         msg = MIMEMultipart('alternative')
         msg['Subject'] = f'New Enquiry from {contact.name} - {contact.services}'
         msg['From'] = SMTP_EMAIL
         msg['To'] = NOTIFY_EMAIL
-
-        html = f"""
-        <html>
-        <body style="font-family: Arial, sans-serif; background: #f4f6f8; padding: 20px;">
-            <div style="max-width: 600px; margin: auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                <div style="background: #02028B; padding: 24px; text-align: center;">
-                    <h1 style="color: white; margin: 0; font-size: 22px;">New Enquiry Received</h1>
+        html = f"""<html><body style="font-family:Arial,sans-serif;background:#f4f6f8;padding:20px;">
+            <div style="max-width:600px;margin:auto;background:white;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,0.1);">
+                <div style="background:#02028B;padding:24px;text-align:center;">
+                    <h1 style="color:white;margin:0;font-size:22px;">New Enquiry Received</h1>
                 </div>
-                <div style="padding: 24px;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding: 12px 8px; font-weight: bold; color: #333; width: 140px;">Name</td>
-                            <td style="padding: 12px 8px; color: #555;">{contact.name}</td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding: 12px 8px; font-weight: bold; color: #333;">Email</td>
-                            <td style="padding: 12px 8px; color: #555;"><a href="mailto:{contact.email}">{contact.email}</a></td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding: 12px 8px; font-weight: bold; color: #333;">Mobile</td>
-                            <td style="padding: 12px 8px; color: #555;"><a href="tel:{contact.mobile}">{contact.mobile}</a></td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding: 12px 8px; font-weight: bold; color: #333;">WhatsApp</td>
-                            <td style="padding: 12px 8px; color: #555;"><a href="https://wa.me/{contact.whatsapp.replace('+','')}">{contact.whatsapp}</a></td>
-                        </tr>
-                        <tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding: 12px 8px; font-weight: bold; color: #333;">Service</td>
-                            <td style="padding: 12px 8px; color: #555;">{contact.services}</td>
-                        </tr>
-                        <tr>
-                            <td style="padding: 12px 8px; font-weight: bold; color: #333; vertical-align: top;">Description</td>
-                            <td style="padding: 12px 8px; color: #555;">{contact.description}</td>
-                        </tr>
-                    </table>
-                </div>
-                <div style="background: #f4f6f8; padding: 16px; text-align: center; font-size: 12px; color: #888;">
-                    SparkCurv Technologies - Enquiry Notification
+                <div style="padding:24px;">
+                    <p><strong>Name:</strong> {contact.name}</p>
+                    <p><strong>Email:</strong> {contact.email}</p>
+                    <p><strong>Mobile:</strong> {contact.mobile}</p>
+                    <p><strong>WhatsApp:</strong> {contact.whatsapp}</p>
+                    <p><strong>Service:</strong> {contact.services}</p>
+                    <p><strong>Description:</strong> {contact.description}</p>
                 </div>
             </div>
-        </body>
-        </html>
-        """
-
+        </body></html>"""
         msg.attach(MIMEText(html, 'html'))
-
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(SMTP_EMAIL, SMTP_PASSWORD)
             server.sendmail(SMTP_EMAIL, NOTIFY_EMAIL, msg.as_string())
-
-        logger.info(f"Enquiry email sent to {NOTIFY_EMAIL}")
+        logger.info(f"Email sent to {NOTIFY_EMAIL}")
     except Exception as e:
-        logger.error(f"Failed to send email: {e}")
+        logger.error(f"Email error: {e}")
 
 
-# Contact Form Endpoints
-@api_router.post("/contact")
-async def submit_contact_form(input: ContactSubmissionCreate):
-    # Validate word count
-    word_count = len(input.description.strip().split())
-    if word_count > 200:
-        raise HTTPException(status_code=400, detail="Description must be 200 words or less")
-
-    p = await get_pool()
-    async with p.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(
-                "INSERT INTO contacts (name, email, mobile, whatsapp, services, description) VALUES (%s, %s, %s, %s, %s, %s)",
-                (input.name, input.email, input.mobile, input.whatsapp, input.services, input.description)
-            )
-            last_id = cur.lastrowid
-
-    # Send email notification
-    try:
-        send_enquiry_email(input)
-    except Exception as e:
-        logger.error(f"Email notification failed: {e}")
-
-    return {
-        "id": last_id,
-        "name": input.name,
-        "email": input.email,
-        "mobile": input.mobile,
-        "whatsapp": input.whatsapp,
-        "services": input.services,
-        "description": input.description,
-        "message": "Enquiry submitted successfully"
-    }
-
-
-@api_router.get("/contact")
-async def get_contact_submissions():
-    p = await get_pool()
-    async with p.acquire() as conn:
-        async with conn.cursor(aiomysql.DictCursor) as cur:
-            await cur.execute("SELECT id, name, email, mobile, whatsapp, services, description, created_at FROM contacts ORDER BY created_at DESC")
-            rows = await cur.fetchall()
-
-    results = []
-    for row in rows:
-        row['created_at'] = row['created_at'].isoformat() if row['created_at'] else ''
-        results.append(row)
-
-    return results
-
-
-# Health check
-@api_router.get("/health")
-async def health():
-    try:
-        p = await get_pool()
-        async with p.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute("SELECT 1")
-        return {"status": "healthy", "database": "MySQL connected"}
-    except Exception as e:
-        return {"status": "unhealthy", "error": str(e)}
-
+# ─── App Setup ────────────────────────────────────────────────────────────────
 
 app.include_router(api_router)
 
+cors_origins = [FRONTEND_URL, "http://localhost:3000"]
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 
 @app.on_event("startup")
 async def startup():
     try:
-        await get_pool()
-        logger.info("MySQL connection pool created successfully")
+        await client.admin.command("ping")
+        logger.info("MongoDB connected")
+        await db.users.create_index("email", unique=True)
+        await db.blogs.create_index("slug", unique=True)
+        await seed_admin()
     except Exception as e:
-        logger.error(f"Failed to connect to MySQL: {e}")
+        logger.error(f"Startup error: {e}")
 
 
-@app.on_event("shutdown")
-async def shutdown():
-    global pool
-    if pool:
-        pool.close()
-        await pool.wait_closed()
-        logger.info("MySQL connection pool closed")
+async def seed_admin():
+    admin_email = os.environ.get("ADMIN_EMAIL", "admin@sparkcurv.com").lower()
+    admin_password = os.environ.get("ADMIN_PASSWORD", "SparkAdmin@2024")
+    existing = await db.users.find_one({"email": admin_email})
+    if existing is None:
+        await db.users.insert_one({
+            "email": admin_email,
+            "password_hash": hash_password(admin_password),
+            "name": "Admin",
+            "role": "admin",
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        logger.info(f"Admin seeded: {admin_email}")
+    else:
+        if not verify_password(admin_password, existing["password_hash"]):
+            await db.users.update_one(
+                {"email": admin_email},
+                {"$set": {"password_hash": hash_password(admin_password)}}
+            )
+            logger.info("Admin password updated")

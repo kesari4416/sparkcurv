@@ -1,5 +1,5 @@
 import '@/App.css';
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
@@ -20,10 +20,37 @@ import About from './pages/About';
 import Pricing from './pages/Pricing';
 import ChatBot from './components/ChatBot';
 import SplashScreen from './components/SplashScreen';
+import AdminLogin from './pages/AdminLogin';
+import AdminDashboard from './pages/AdminDashboard';
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+function ProtectedAdmin({ children }) {
+  const { admin } = useAuth();
+  if (admin === undefined) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#02028B]/20 border-t-[#02028B] rounded-full animate-spin" />
+      </div>
+    );
+  }
+  if (!admin) return <Navigate to="/admin/login" replace />;
+  return children;
+}
 
 function AppContent() {
   const location = useLocation();
   const isThankYou = location.pathname === '/thank-you';
+  const isAdmin = location.pathname.startsWith('/admin');
+
+  if (isAdmin) {
+    return (
+      <Routes>
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/admin/dashboard" element={<ProtectedAdmin><AdminDashboard /></ProtectedAdmin>} />
+        <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+      </Routes>
+    );
+  }
 
   return (
     <>
@@ -39,7 +66,7 @@ function AppContent() {
           <Route path="/digital-growth" element={<DigitalGrowth />} />
           <Route path="/digital-growth/:subpage" element={<DigitalGrowth />} />
           <Route path="/pricing" element={<Pricing />} />
-          <Route path="/about" element={<About />} />  {/* fix: was /About */}
+          <Route path="/about" element={<About />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/contact" element={<Contact />} />
@@ -57,16 +84,17 @@ function App() {
 
   return (
     <HelmetProvider>
-      <BrowserRouter>                         {/* moved outside motion wrapper */}
-        <div className="App">
-          <AnimatePresence>
-            {showSplash && (
-              <SplashScreen onComplete={() => setShowSplash(false)} />
-            )}
-          </AnimatePresence>
-
-          {!showSplash && <AppContent />}     {/* render only after splash done */}
-        </div>
+      <BrowserRouter>
+        <AuthProvider>
+          <div className="App">
+            <AnimatePresence>
+              {showSplash && (
+                <SplashScreen onComplete={() => setShowSplash(false)} />
+              )}
+            </AnimatePresence>
+            {!showSplash && <AppContent />}
+          </div>
+        </AuthProvider>
       </BrowserRouter>
     </HelmetProvider>
   );
