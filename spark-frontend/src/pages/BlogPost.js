@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 import { Calendar, User, ArrowLeft } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -44,8 +45,16 @@ const BlogPost = () => {
     );
   }
 
+  const seoTitle = post.meta_title || post.title;
+  const seoDesc = post.meta_description || post.excerpt;
+
   return (
     <div data-testid="blog-post-page" className="pt-20">
+      <SEO
+        title={seoTitle}
+        description={seoDesc}
+        canonical={`https://sparkcurv.com/blog/${post.slug}`}
+      />
       <article className="py-24 md:py-32">
         <div className="max-w-4xl mx-auto px-6 lg:px-12">
           <Link

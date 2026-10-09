@@ -59,13 +59,17 @@
 - [x] Published/Draft toggle
 - [x] Public blog listing
 
+### Completed in Session 2 (Oct 9, 2026)
+- [x] SEO fields per blog (meta_title, meta_description with char counters)
+- [x] Blog search + category + status filters in admin
+- [x] Contact leads tab in admin (expandable rows, WhatsApp/email quick-reply)
+
 ### P1 - Should Have (Next)
 - [ ] Blog image upload (actual file upload vs URL)
-- [ ] Blog categories filter/search
-- [ ] SEO meta fields per blog (meta title, description)
+- [ ] Rich text image embed
+- [ ] Blog preview before publish
 
 ### P2 - Nice to Have
 - [ ] Markdown support
-- [ ] Preview before publish
-- [ ] Contacts list in admin
 - [ ] Multiple admin users
+- [ ] Blog tags/labels
