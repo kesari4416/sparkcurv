@@ -1,17 +1,17 @@
-# SparkCurv - Admin Panel PRD
+# SparkCurv — Admin Panel PRD
 
 ## Original Problem Statement
-"In github i have connect the frontend and backend https://github.com/kesari4416/sparkcurv.git in this i need admin panel for add the blogs"
+"In github I have connect the frontend and backend https://github.com/kesari4416/sparkcurv.git in this I need admin panel for add the blogs"
 
 ## Architecture
 
 ### Stack
 - **Frontend:** React 19, Tailwind CSS, Framer Motion, craco (at /app/spark-frontend)
-- **Backend:** FastAPI, MongoDB (Motor), bcrypt, PyJWT (at /app/spark-backend)
-- **Database:** MongoDB (sparkcurv_db)
-- **Auth:** JWT-based with httpOnly cookies
+- **Backend:** FastAPI, MySQL (aiomysql), bcrypt, PyJWT (at /app/spark-backend)
+- **Database:** MySQL (production, user's own server) — NOT available in preview container
+- **Auth:** JWT-based using localStorage + Authorization: Bearer header (axios interceptor)
 
-### Supervisor Config
+### Directory
 - Backend: /app/backend (symlink → /app/spark-backend), port 8001
 - Frontend: /app/frontend (symlink → /app/spark-frontend), port 3000
 
@@ -19,57 +19,68 @@
 1. Admin panel at /admin route (separate from main site)
 2. JWT login (email/password)
 3. Blog CRUD: Create, Edit, Delete with Rich Text Editor
-4. Image URL for cover photos
+4. Image upload for cover photos + gallery
 5. Published/Draft toggle
 6. Published blogs visible on public /blog page
+7. SEO Fields (meta title/description)
+8. Blog Search & Filter
+9. Contact Leads View
+10. Rich Text Color & Font Size controls
+11. Blog Tags with filter bar
+12. Multiple Admin Users (Team tab)
+13. PDF Template generation
 
-## What's Been Implemented (Oct 9, 2026)
+## What's Been Implemented
 
-### Backend (server.py - full rewrite to MongoDB)
-- MongoDB connection (motor) replacing MySQL (aiomysql)
-- JWT auth: /api/auth/login, /api/auth/logout, /api/auth/me
-- Admin seeding on startup from .env
+### Backend (server.py — MySQL)
+- MySQL connection pool (aiomysql) with auto table creation on startup
+- JWT auth: /api/auth/login (returns token), /api/auth/logout, /api/auth/me
+- Admin seeding on startup from ADMIN_EMAIL/ADMIN_PASSWORD env vars (safe — no longer deletes other admins)
 - Blog CRUD: GET /api/blogs (public), GET /api/blogs/all (admin), GET /api/blogs/:slug (public), POST/PUT/DELETE /api/blogs (admin)
-- Contact form migrated to MongoDB
-- Symlinks: /app/backend → /app/spark-backend, /app/frontend → /app/spark-frontend
+- Image upload as base64 LONGTEXT: POST /api/upload/image, GET /api/images/:id, GET/DELETE /api/images
+- Admin users: GET/POST/DELETE /api/admin/users
+- Contact form: POST /api/contact, GET /api/contact (admin)
+- PDF template: GET /api/blog-template/pdf (fpdf2)
+- Email notification on contact submit (SMTP Gmail)
 
 ### Frontend
-- AuthContext (JWT state management)
+- AuthContext: localStorage token + axios interceptor (Bearer header on all requests)
 - AdminLogin.jsx (/admin/login)
-- AdminDashboard.jsx (/admin/dashboard) with stats, blog list, inline editor modal
-- RichTextEditor.jsx (contentEditable with toolbar)
-- Blog.js - updated to fetch from /api/blogs
-- BlogPost.js - updated to fetch from /api/blogs/:slug
-- App.js - admin routes added with ProtectedAdmin guard
+- AdminDashboard.jsx (/admin/dashboard): Blog list, editor modal, contacts, media library, team management
+- RichTextEditor.jsx: contentEditable toolbar with bold/italic/underline/lists/links/image embed/color/font-size
+- CoverImageUploader: drag-drop file upload or URL paste, with gallery picker
+- Blog.js: public blog listing with tag filter bar
+- BlogPost.js: single post view with SEO, tags, rich content render
 
-## Test Results
-- 13/13 E2E tests passing (100%)
-- Backend: 16/16 API tests passing
+## MySQL Tables
+- users: id, email, password_hash, name, role, created_at
+- blogs: id, title, slug, excerpt, content, image_url, author, category, tags (JSON), published, meta_title, meta_description, created_at, updated_at
+- contacts: id, name, email, mobile, whatsapp, services, description, created_at
+- images: id, filename, content_type, data (LONGTEXT base64), created_at
 
-## Admin Credentials
-- Email: admin@sparkcurv.com
-- Password: SparkAdmin@2024
+## Server .env (required on production server)
+```
+MYSQL_HOST=your-db-host
+MYSQL_PORT=3306
+MYSQL_USER=your-db-user
+MYSQL_PASSWORD=your-db-password
+MYSQL_DATABASE=spark_db
+JWT_SECRET=<long random string>
+ADMIN_EMAIL=ponish.jino@sparkcurv.com
+ADMIN_PASSWORD=Aiden@1996
+FRONTEND_URL=https://sparkcurv.com
+SMTP_EMAIL=sales@sparkcurv.com
+SMTP_PASSWORD=<gmail app password>
+NOTIFY_EMAIL=sales@sparkcurv.com
+```
 
-## Prioritized Backlog
+## Admin Credentials (Production)
+- Email: ponish.jino@sparkcurv.com
+- Password: Aiden@1996
 
-### P0 - Must Have (Done)
-- [x] Admin login
-- [x] Blog CRUD
-- [x] Rich text editor
-- [x] Published/Draft toggle
-- [x] Public blog listing
+## Bug Fixes Applied
+- Fixed: seed_admin() was deleting ALL other admin accounts on every server restart (removed the dangerous DELETE statement)
 
-### Completed in Session 4 (Oct 9, 2026)
-- [x] PDF Blog Template download (GET /api/blog-template/pdf via fpdf2)
-  - Sections: Basic Info, Excerpt, Content (5 sub-sections), SEO, Publish Status, Notes
-  - "Template" button in admin header downloads sparkcurv-blog-template.pdf
-- [x] Rich Text Color picker (16-color popover palette)
-- [x] Rich Text Font Size selector (Small / Normal / Large / X-Large / Huge)
-- [x] Image Gallery (Media tab + gallery modal shared across cover uploader and RTE)
-- [x] Blog Tags (add/remove tags, tag filter bar on public /blog, tag badges on post page)
-- [x] Multiple Admin Users (Team tab — add/remove admins, protected self-delete)
-
-### P1 - Should Have (Next)
-- [ ] Multiple admin users / user management
-- [ ] Blog tags/labels for better categorization
-- [ ] Rich text color picker / font size controls
+## Status
+- Preview environment: Backend unavailable (MySQL not installed in preview container)
+- Production (sparkcurv.com): Ready to deploy — configure MySQL env vars and run
