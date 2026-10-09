@@ -81,6 +81,20 @@ function AppContent() {
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
+  const isAdmin = window.location.pathname.startsWith('/admin');
+
+  // Skip splash screen entirely for admin routes
+  if (isAdmin) {
+    return (
+      <HelmetProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </BrowserRouter>
+      </HelmetProvider>
+    );
+  }
 
   return (
     <HelmetProvider>

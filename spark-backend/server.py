@@ -143,7 +143,13 @@ async def login(data: LoginRequest, response: Response):
         key="access_token", value=token,
         httponly=True, secure=True, samesite="none", max_age=28800, path="/"
     )
-    return {"id": str(user["_id"]), "email": user["email"], "name": user.get("name", ""), "role": user["role"]}
+    return {
+        "id": str(user["_id"]),
+        "email": user["email"],
+        "name": user.get("name", ""),
+        "role": user["role"],
+        "token": token
+    }
 
 @api_router.post("/auth/logout")
 async def logout(response: Response):
