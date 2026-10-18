@@ -2,13 +2,15 @@
 
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { Gauge } from 'lucide-react';
 import type { Tool } from '@/lib/services';
 import { ease } from '@/lib/tokens';
 import { SectionIntro } from '@/components/SectionIntro';
 
 /**
  * Technologies used for a service. Vendor logos are drawn for light backgrounds, so each
- * sits on a small bone tile; the name runs underneath in mono.
+ * sits on a small light tile; the name runs underneath in mono. A tool without a logo file
+ * gets a neutral gauge icon on the same tile.
  */
 export function ToolGrid({ tools }: { tools: Tool[] }) {
   return (
@@ -38,8 +40,12 @@ export function ToolGrid({ tools }: { tools: Tool[] }) {
               transition={{ duration: 0.8, ease: ease.out, delay: (i % 6) * 0.05 }}
               className="group flex flex-col items-center justify-center gap-4 border-b border-r px-4 py-8 transition-colors duration-500 hover:bg-bone/[0.03] md:py-10"
             >
-              <span className="grid h-16 w-16 place-items-center rounded-2xl bg-bone p-3 transition-transform duration-500 ease-expo-out group-hover:-translate-y-1 md:h-[4.5rem] md:w-[4.5rem]">
-                <Image src={tool.logo} alt="" width={48} height={48} className="h-full w-full object-contain" />
+              <span className="grid h-16 w-16 place-items-center rounded-2xl border bg-[#F4F2ED] p-3 transition-transform duration-500 ease-expo-out group-hover:-translate-y-1 md:h-[4.5rem] md:w-[4.5rem]">
+                {tool.logo ? (
+                  <Image src={tool.logo} alt="" width={48} height={48} className="h-full w-full object-contain" />
+                ) : (
+                  <Gauge aria-hidden strokeWidth={1.5} className="h-7 w-7 text-[#0E0E10]" />
+                )}
               </span>
               <span className="text-center font-mono text-[0.7rem] uppercase tracking-[0.14em] text-bone/70 transition-colors group-hover:text-bone">
                 {tool.name}

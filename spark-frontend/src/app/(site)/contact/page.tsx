@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { AtSign, MapPin, Share2 } from 'lucide-react';
 import { site, socials } from '@/lib/content';
 import { PageHero } from '@/sections/page/PageHero';
 import { ContactForm } from '@/sections/contact/ContactForm';
@@ -17,7 +18,8 @@ export const metadata: Metadata = {
   twitter: { card: 'summary_large_image' },
 };
 
-const eyebrow = 'font-mono text-eyebrow uppercase text-bone/50';
+const eyebrow = 'flex items-center gap-2.5 font-mono text-eyebrow uppercase text-bone/50';
+const icon = 'h-4 w-4 text-spark-blue';
 
 export default function ContactPage() {
   return (
@@ -35,7 +37,10 @@ export default function ContactPage() {
           {/* Details */}
           <aside className="flex flex-col gap-12 lg:col-span-4">
             <div>
-              <h2 className={eyebrow}>Write or call</h2>
+              <h2 className={eyebrow}>
+                <AtSign aria-hidden strokeWidth={1.5} className={icon} />
+                Write or call
+              </h2>
               <a href={`mailto:${site.email}`} className="mt-5 block font-display text-[clamp(1.6rem,2.6vw,2.25rem)] leading-tight tracking-tight text-bone transition-colors hover:text-bone-muted [overflow-wrap:anywhere]">
                 {site.email}
               </a>
@@ -45,7 +50,10 @@ export default function ContactPage() {
             </div>
 
             <div>
-              <h2 className={eyebrow}>Main branch · Nagercoil</h2>
+              <h2 className={eyebrow}>
+                <MapPin aria-hidden strokeWidth={1.5} className={icon} />
+                Main branch · Nagercoil
+              </h2>
               <address className="mt-5 not-italic leading-relaxed text-bone-muted">
                 {site.address.map((line) => (
                   <span key={line} className="block">
@@ -57,7 +65,10 @@ export default function ContactPage() {
             </div>
 
             <div>
-              <h2 className={eyebrow}>Follow</h2>
+              <h2 className={eyebrow}>
+                <Share2 aria-hidden strokeWidth={1.5} className={icon} />
+                Follow
+              </h2>
               <ul className="mt-5 flex flex-wrap gap-x-5 gap-y-2 font-mono text-eyebrow uppercase text-bone-muted">
                 {socials.map((s) => (
                   <li key={s.label}>

@@ -18,10 +18,10 @@ export const site = {
 
 export const hero = {
   eyebrow: 'Innovation meets precision',
-  /** Each entry is one line of the headline. `accent` lines get the italic gradient treatment. */
+  /** Each entry is one line of the headline. `accent` lines get the light gradient treatment. */
   headline: [
     { text: 'We engineer', accent: false },
-    { text: 'digital', accent: false, indent: true },
+    { text: 'digital', accent: false },
     { text: 'evolution.', accent: true },
   ],
   intro:
@@ -55,7 +55,7 @@ export const nav = [
   { label: 'Contact', href: '/contact' },
 ];
 
-/** Section 4 — bento grid. `size` drives the asymmetric layout (see sections/FeatureBento). */
+/** Section 4 — bento grid. `size` drives the asymmetric layout (see sections/FeatureBento). Every tile has a photo; small tiles also carry an icon. */
 export const features = [
   {
     title: 'AI & ML services',
@@ -77,6 +77,7 @@ export const features = [
     title: 'CI/CD automation',
     body: 'Automated build, test and deploy pipelines.',
     href: '/managed-cloud-service/cicd-automation',
+    image: '/images/services/cicd-hero.jpg',
     icon: 'pipeline',
     size: 'sm',
     hover: 'spin',
@@ -85,6 +86,7 @@ export const features = [
     title: 'Infrastructure as code',
     body: 'Version-controlled Terraform, CloudFormation and Ansible.',
     href: '/managed-cloud-service/infrastructure-as-code',
+    image: '/images/services/iac-hero.jpg',
     icon: 'code',
     size: 'sm',
     hover: 'gradient',
@@ -101,6 +103,7 @@ export const features = [
     title: 'Web development',
     body: 'Custom web platforms for e-commerce, healthcare, education, finance and more.',
     href: '/application-development/web-development',
+    image: '/images/platforms/webdev-hero.jpg',
     icon: 'browser',
     size: 'md',
     hover: 'gradient',
@@ -109,6 +112,7 @@ export const features = [
     title: 'Containers & monitoring',
     body: 'Docker, Kubernetes and 24/7 observability.',
     href: '/managed-cloud-service/containerization',
+    image: '/images/services/containerization-hero.jpg',
     icon: 'container',
     size: 'sm',
     hover: 'spin',

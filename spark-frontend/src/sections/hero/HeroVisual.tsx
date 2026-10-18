@@ -45,8 +45,9 @@ export function HeroVisual({ play }: { play: boolean }) {
 
   return (
     <div aria-hidden className="absolute inset-0 -z-10">
+      {/* .hero-visual: inverted into ink lines in the light scheme (globals.css). */}
       <motion.div
-        className="absolute inset-0"
+        className="hero-visual absolute inset-0"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={play ? { opacity: 1, scale: 1 } : undefined}
         transition={{ duration: 1.6, ease: ease.out }}
@@ -76,7 +77,7 @@ export function HeroVisual({ play }: { play: boolean }) {
       </motion.div>
 
       {mode === 'webgl' && mountCanvas && (
-        <div className={cn('absolute inset-0 transition-opacity duration-[1400ms]', canvasReady ? 'opacity-100' : 'opacity-0')}>
+        <div className={cn('hero-visual absolute inset-0 transition-opacity duration-[1400ms]', canvasReady ? 'opacity-100' : 'opacity-0')}>
           <HeroCanvas play={play} onReady={() => setCanvasReady(true)} />
         </div>
       )}

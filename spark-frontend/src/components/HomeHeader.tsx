@@ -12,6 +12,7 @@ import { useClock } from '@/hooks/useClock';
 import { Wordmark } from './Wordmark';
 import { ScrambleText } from './ScrambleText';
 import { CTAButton } from './CTAButton';
+import { ThemeToggle } from './ThemeToggle';
 
 /** Where the menu was opened from: the circle reveal grows out of the button's centre. */
 type MenuState = { path: string; x: number; y: number; radius: number };
@@ -27,6 +28,18 @@ export function HomeHeader() {
   const menuId = useId();
   const toggleRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Publish the header's height as --header-h, so sticky bars below it (the service
+  // sub-navigation) sit flush under it whatever the logo or breakpoint.
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const ro = new ResizeObserver(() => root.style.setProperty('--header-h', `${Math.round(el.getBoundingClientRect().height)}px`));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // The menu remembers the path it was opened on and only counts as open while we are
   // still there, so a route change closes it without a state-syncing effect.
@@ -131,6 +144,7 @@ export function HomeHeader() {
   return (
     <>
       <motion.header
+        ref={headerRef}
         initial={{ y: -24, opacity: 0 }}
         animate={introDone ? { y: 0, opacity: 1 } : undefined}
         transition={{ duration: 1, ease: ease.out, delay: 0.5 }}
@@ -178,6 +192,9 @@ export function HomeHeader() {
                   </li>
                 );
               })}
+              <li>
+                <ThemeToggle className="h-9 w-9" />
+              </li>
             </ul>
           </nav>
 
@@ -205,6 +222,8 @@ export function HomeHeader() {
                 <CTAButton size="sm" />
               </div>
             </div>
+
+            <ThemeToggle className="glass h-11 w-11 lg:hidden" />
 
             <button
               ref={toggleRef}

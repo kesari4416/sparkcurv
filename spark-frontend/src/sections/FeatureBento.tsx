@@ -130,7 +130,7 @@ function Tile({ feature, index }: { feature: Feature; index: number }) {
         ref={linkRef}
         href={feature.href}
         onPointerMove={onPointerMove}
-        className="glass group relative isolate flex flex-1 flex-col justify-between overflow-hidden rounded-3xl p-6 focus-visible:rounded-3xl md:p-8"
+        className="glass scheme-dark group relative isolate flex flex-1 flex-col justify-between overflow-hidden rounded-3xl p-6 focus-visible:rounded-3xl md:p-8"
       >
         {hasImage && (
           <>
@@ -184,7 +184,7 @@ function Tile({ feature, index }: { feature: Feature; index: number }) {
           {Icon && (
             <span
               aria-hidden
-              className="mb-6 grid h-14 w-14 place-items-center rounded-2xl border bg-ink-800/60 text-bone"
+              className="mb-6 grid h-14 w-14 place-items-center rounded-2xl border bg-ink/50 text-bone backdrop-blur-md"
             >
               <Icon
                 strokeWidth={1.25}

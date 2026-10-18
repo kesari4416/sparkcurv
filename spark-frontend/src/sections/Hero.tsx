@@ -4,7 +4,6 @@ import { motion } from 'framer-motion';
 import { useUI } from '@/lib/store';
 import { ease } from '@/lib/tokens';
 import { hero } from '@/lib/content';
-import { cn } from '@/lib/cn';
 import { RevealText } from '@/components/RevealText';
 import { AccentField } from '@/components/AccentField';
 import { CTAButton } from '@/components/CTAButton';
@@ -38,9 +37,11 @@ export function Hero() {
           {hero.eyebrow}
         </motion.p>
 
-        <h1 id="hero-title" className="font-display text-display-xl text-bone">
+        {/* One flush-left block, sized so the longest line ("We engineer") takes about half
+            the width on desktop and leaves the right side to the network sphere. */}
+        <h1 id="hero-title" className="max-w-[11ch] font-display text-[clamp(3rem,8.4vw,9.5rem)] leading-[0.9] tracking-[-0.03em] text-bone">
           {hero.headline.map((line, i) => (
-            <span key={line.text} className={cn('block', line.indent && 'pl-[0.55em] md:pl-[1.3em]')}>
+            <span key={line.text} className="block">
               <RevealText
                 text={line.text}
                 play={introDone}

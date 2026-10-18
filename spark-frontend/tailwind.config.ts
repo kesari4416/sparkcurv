@@ -1,7 +1,13 @@
 import type { Config } from 'tailwindcss';
 import typography from '@tailwindcss/typography';
 import plugin from 'tailwindcss/plugin';
-import { cubicBezier, ease, palette, sparkGradient } from './src/lib/tokens';
+import { cubicBezier, ease, palette, schemes } from './src/lib/tokens';
+
+/** A scheme colour (CSS variable holding "r g b") that still supports /opacity modifiers. */
+const scheme = (name: string) => `rgb(var(--${name}) / <alpha-value>)`;
+
+/** { ink: '10 10 11', … } → { '--ink': '10 10 11', … } */
+const vars = (values: Record<string, string>) => Object.fromEntries(Object.entries(values).map(([k, v]) => [`--${k}`, v]));
 
 /**
  * Tailwind theme.
@@ -15,12 +21,13 @@ const config = {
   theme: {
     extend: {
       colors: {
-        // New design
-        ink: palette.ink,
-        bone: palette.bone,
+        // New design. ink (surface) and bone (text) follow the light/dark scheme; see
+        // `schemes` in tokens.ts. The brand blues and status colours are fixed.
+        ink: { DEFAULT: scheme('ink'), 800: scheme('ink-800'), 700: scheme('ink-700'), 600: scheme('ink-600') },
+        bone: { DEFAULT: scheme('bone'), muted: scheme('bone-muted'), faint: scheme('bone-faint') },
         spark: palette.spark,
         signal: palette.signal,
-        hairline: palette.hairline,
+        hairline: 'var(--hairline)',
         // Legacy (shadcn variables defined in globals.css)
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',
@@ -62,7 +69,7 @@ const config = {
         sm: 'calc(var(--radius) - 4px)',
       },
       backgroundImage: {
-        spark: sparkGradient,
+        spark: 'var(--spark-gradient)',
       },
       transitionTimingFunction: {
         'expo-out': cubicBezier(ease.out),
@@ -114,6 +121,16 @@ const config = {
   },
   plugins: [
     typography,
+    // Scheme variables: dark by default, light when <html data-scheme="light"> (ThemeToggle).
+    plugin(({ addBase }) => {
+      addBase({
+        ':root': vars(schemes.dark),
+        "html[data-scheme='light']": vars(schemes.light),
+        // Photo cards stay dark in both schemes: their imagery is dark and their light text
+        // sits on an ink scrim. The class re-declares the dark values for that subtree.
+        '.scheme-dark': vars(schemes.dark),
+      });
+    }),
     plugin(({ addUtilities }) => {
       addUtilities({
         '.animation-delay-2000': { 'animation-delay': '2s' },

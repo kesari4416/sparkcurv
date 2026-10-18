@@ -5,7 +5,8 @@
  */
 
 export type Faq = { q: string; a: string };
-export type Tool = { name: string; logo: string };
+/** `logo` is a file in public/images/tools; without one the tool grid shows a neutral icon. */
+export type Tool = { name: string; logo?: string };
 
 /** Icons for the sub-service cards (mapped to lucide icons in sections/service/ServiceCards). */
 export type ServiceIcon =
@@ -367,7 +368,8 @@ const managedCloud: ServiceFamily = {
         { name: 'New Relic', logo: logo('newrelic.webp') },
         { name: 'Nagios', logo: logo('nagios.png') },
         { name: 'Zabbix', logo: logo('zabix.webp') },
-        { name: 'AWS CloudWatch', logo: logo('cloudwatch.png') },
+        // No CloudWatch logo in the repo (the old cloudwatch.png was a saved error page).
+        { name: 'AWS CloudWatch' },
         { name: 'Elasticsearch', logo: logo('elasticsearch.png') },
         { name: 'Wazuh', logo: logo('wazuh.webp') },
       ],

@@ -48,7 +48,7 @@ export function PageHero({ eyebrow, lead, accent, description, crumbs, image, im
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">
         <div
           className="absolute inset-0 opacity-50 [mask-image:radial-gradient(70%_60%_at_70%_20%,black,transparent)]"
-          style={{ backgroundImage: 'radial-gradient(rgba(242,239,232,0.16) 1px, transparent 1px)', backgroundSize: '28px 28px' }}
+          style={{ backgroundImage: 'radial-gradient(rgb(var(--bone) / 0.16) 1px, transparent 1px)', backgroundSize: '28px 28px' }}
         />
         <div
           className="absolute inset-0"
@@ -120,7 +120,7 @@ export function PageHero({ eyebrow, lead, accent, description, crumbs, image, im
               initial={{ clipPath: 'inset(100% 0% 0% 0% round 1.5rem)' }}
               animate={play ? { clipPath: 'inset(0% 0% 0% 0% round 1.5rem)' } : undefined}
               transition={{ duration: 1.4, ease: ease.inOut, delay: 0.3 }}
-              className="relative aspect-[4/3] overflow-hidden rounded-3xl bg-ink-800 lg:col-span-5 lg:col-start-8"
+              className="scheme-dark relative aspect-[4/3] overflow-hidden rounded-3xl bg-ink-800 lg:col-span-5 lg:col-start-8"
             >
               <motion.div
                 initial={{ scale: 1.25 }}

@@ -145,7 +145,7 @@ export function BlogArticle({ slug }: { slug: string }) {
       )}
 
       <div
-        className="prose prose-lg prose-invert mx-auto mt-14 max-w-3xl px-gutter md:mt-20 prose-headings:font-display prose-headings:tracking-[-0.02em] prose-headings:text-bone prose-p:text-bone/80 prose-a:text-spark-blue prose-a:underline-offset-4 prose-strong:text-bone prose-blockquote:border-l-spark-blue prose-blockquote:text-bone/80 prose-pre:overflow-x-auto prose-pre:bg-ink-800 prose-img:rounded-2xl prose-hr:border-hairline"
+        className="prose prose-lg prose-scheme mx-auto mt-14 max-w-3xl px-gutter md:mt-20 prose-headings:font-display prose-headings:tracking-[-0.02em] prose-a:underline-offset-4 prose-pre:overflow-x-auto prose-img:rounded-2xl"
         dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.content) }}
       />
     </article>

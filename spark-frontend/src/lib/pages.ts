@@ -143,13 +143,14 @@ export const pricing = {
       cta: 'Contact us',
     },
   ] satisfies Plan[],
+  /** `icon` keys map to lucide icons in sections/pricing/Includes.tsx. */
   includes: [
-    { title: 'Onboarding & Security Review', body: 'Full audit of your current environment before we begin' },
-    { title: '24/7 Tier-3 Support & Monitoring', body: 'Senior engineers, not tier-1 ticket handlers' },
-    { title: 'Infrastructure as Code (IaC)', body: 'Terraform, CloudFormation, Ansible automation' },
-    { title: 'Named Technical Project Manager', body: 'Single point of contact who knows your business' },
-    { title: 'Cost Optimization Reviews', body: 'Proactive recommendations to reduce cloud spend' },
-    { title: 'Regular Patching & Updates', body: 'Quarterly or monthly based on your plan' },
+    { icon: 'shield', title: 'Onboarding & Security Review', body: 'Full audit of your current environment before we begin' },
+    { icon: 'headset', title: '24/7 Tier-3 Support & Monitoring', body: 'Senior engineers, not tier-1 ticket handlers' },
+    { icon: 'code', title: 'Infrastructure as Code (IaC)', body: 'Terraform, CloudFormation, Ansible automation' },
+    { icon: 'person', title: 'Named Technical Project Manager', body: 'Single point of contact who knows your business' },
+    { icon: 'savings', title: 'Cost Optimization Reviews', body: 'Proactive recommendations to reduce cloud spend' },
+    { icon: 'refresh', title: 'Regular Patching & Updates', body: 'Quarterly or monthly based on your plan' },
   ],
   faqs: [
     { q: 'What is included in the management fee?', a: 'Our management fees cover 24/7 monitoring, infrastructure management, DevOps engineering, security patching, cost optimization, and dedicated support. Your cloud provider costs (compute, storage, bandwidth) are separate and paid directly to AWS/Azure/GCP.' },

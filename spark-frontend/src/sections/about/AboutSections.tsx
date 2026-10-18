@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
+import { Compass, Telescope } from 'lucide-react';
 import { about } from '@/lib/pages';
 import { site } from '@/lib/content';
 import { useUI } from '@/lib/store';
@@ -69,8 +70,8 @@ export function Story() {
 /** Vision and mission side by side, each in a tall glass panel. */
 export function VisionMission() {
   const items = [
-    { label: 'Our vision', index: '01', text: about.vision },
-    { label: 'Our mission', index: '02', text: about.mission },
+    { label: 'Our vision', index: '01', text: about.vision, Icon: Telescope },
+    { label: 'Our mission', index: '02', text: about.mission, Icon: Compass },
   ];
   return (
     <section aria-labelledby="vm-title" className="pb-24 md:pb-36">
@@ -92,7 +93,10 @@ export function VisionMission() {
                 style={{ background: i === 0 ? 'rgba(36,103,255,0.35)' : 'rgba(201,206,214,0.18)' }}
               />
               <div className="flex items-center justify-between font-mono text-eyebrow uppercase text-bone/50">
-                <h3>{item.label}</h3>
+                <h3 className="flex items-center gap-3">
+                  <item.Icon aria-hidden strokeWidth={1.25} className="h-5 w-5 text-spark-blue" />
+                  {item.label}
+                </h3>
                 <span aria-hidden className="tabular">{item.index}</span>
               </div>
               <p className="mt-12 text-[clamp(1.2rem,1.7vw,1.5rem)] leading-relaxed text-bone/90">{item.text}</p>
@@ -104,7 +108,11 @@ export function VisionMission() {
   );
 }
 
-/** Team portraits: muted until hovered, name and role underneath. */
+/**
+ * Team portraits in full colour, name and role set on the photo. Hover (or focus within):
+ * the photo eases in, a brand tint rises from the bottom and a gradient hairline lights
+ * the frame, the same language as the home page tiles.
+ */
 export function Team() {
   return (
     <section aria-labelledby="team-title" className="pb-24 md:pb-36 [content-visibility:auto] [contain-intrinsic-size:auto_900px]">
@@ -135,20 +143,34 @@ export function Team() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: '0px 0px -10% 0px' }}
               transition={{ duration: 0.9, ease: ease.out, delay: (i % 4) * 0.08 }}
-              className="group"
+              className="scheme-dark group relative rounded-3xl p-px"
             >
-              <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-ink-800">
+              {/* Frame: a hairline at rest, the brand gradient on hover. */}
+              <span aria-hidden className="absolute inset-0 rounded-3xl bg-hairline" />
+              <span
+                aria-hidden
+                className="absolute inset-0 animate-gradient-pan rounded-3xl bg-spark bg-[length:200%_100%] opacity-0 transition-opacity duration-700 group-hover:opacity-100"
+              />
+              <div className="relative aspect-[4/5] overflow-hidden rounded-[calc(1.5rem-1px)] bg-ink-800">
                 <Image
                   src={m.image}
                   alt={m.name}
                   fill
                   sizes="(min-width: 1024px) 25vw, 50vw"
-                  className="object-cover grayscale transition-[filter,transform] duration-700 ease-expo-out group-hover:scale-[1.04] group-hover:grayscale-0"
+                  className="object-cover transition-transform duration-[1400ms] ease-expo-out group-hover:scale-[1.06]"
                 />
-                <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink/70 via-transparent to-transparent" />
+                {/* Legibility scrim for the caption. */}
+                <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent" />
+                {/* Brand tint rising from the bottom on hover. */}
+                <div
+                  aria-hidden
+                  className="absolute inset-0 translate-y-1/4 bg-gradient-to-t from-spark-royal/45 via-spark-blue/10 to-transparent opacity-0 transition-[opacity,transform] duration-700 ease-expo-out group-hover:translate-y-0 group-hover:opacity-100"
+                />
+                <div className="absolute inset-x-0 bottom-0 p-4 md:p-6">
+                  <h3 className="font-display text-lg leading-tight tracking-[-0.015em] text-bone md:text-2xl">{m.name}</h3>
+                  <p className="mt-1 text-xs leading-snug text-bone/75 md:text-sm">{m.role}</p>
+                </div>
               </div>
-              <h3 className="mt-5 font-display text-xl tracking-[-0.015em] text-bone md:text-2xl">{m.name}</h3>
-              <p className="mt-1 text-sm text-bone-muted md:text-base">{m.role}</p>
             </motion.li>
           ))}
         </ul>

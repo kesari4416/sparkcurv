@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, useInView, useReducedMotion, useScroll } from 'framer-motion';
+import { GraduationCap, HeartPulse, House, Landmark, Plane, ShoppingBag, Truck, UtensilsCrossed, type LucideIcon } from 'lucide-react';
 import { industries } from '@/lib/content';
 import { ease } from '@/lib/tokens';
 import { cn } from '@/lib/cn';
@@ -22,6 +23,18 @@ const TRACK_INSET = `max(${GUTTER}, calc((100% - 1680px) / 2 + ${GUTTER}))`;
 
 /** Card width: 78vw on phones, capped at 26rem (see the li classes below). */
 const IMAGE_SIZES = '(min-width: 640px) 26rem, 78vw';
+
+/** One glyph per industry, shown in a small chip on its card (keyed by the names in content.ts). */
+const industryIcons: Record<string, LucideIcon> = {
+  'E-commerce': ShoppingBag,
+  Healthcare: HeartPulse,
+  Education: GraduationCap,
+  Finance: Landmark,
+  'Real estate': House,
+  Travel: Plane,
+  'Food & restaurants': UtensilsCrossed,
+  Logistics: Truck,
+};
 
 function Arrow({ dir }: { dir: 'prev' | 'next' }) {
   return (
@@ -190,7 +203,7 @@ export function Industries() {
                   href={CARD_HREF}
                   draggable={false}
                   /* Inset focus ring: the scroller would crop an outer one. */
-                  className="group relative isolate block aspect-[4/5] overflow-hidden rounded-3xl bg-ink-800 focus-visible:outline-offset-[-2px]"
+                  className="scheme-dark group relative isolate block aspect-[4/5] overflow-hidden rounded-3xl bg-ink-800 focus-visible:outline-offset-[-2px]"
                 >
                   {/* Zoom: the photo scales inside the fixed-aspect frame, so nothing around it moves. */}
                   <div className="absolute inset-0 -z-10 transition-transform duration-[1400ms] ease-expo-out group-hover:scale-[1.06] group-focus-visible:scale-[1.06]">
@@ -214,6 +227,15 @@ export function Industries() {
                   <span aria-hidden className="tabular absolute left-6 top-6 font-mono text-eyebrow uppercase text-bone/70 md:left-7 md:top-7">
                     {String(i + 1).padStart(2, '0')}
                   </span>
+
+                  {(() => {
+                    const Icon = industryIcons[industry.name];
+                    return Icon ? (
+                      <span aria-hidden className="absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full border bg-ink/55 text-bone backdrop-blur-md md:right-6 md:top-6">
+                        <Icon strokeWidth={1.5} className="h-5 w-5" />
+                      </span>
+                    ) : null;
+                  })()}
 
                   <div className="absolute inset-x-0 bottom-0 p-6 md:p-7">
                     <h3 className="font-display text-[2rem] leading-none text-bone">{industry.name}</h3>

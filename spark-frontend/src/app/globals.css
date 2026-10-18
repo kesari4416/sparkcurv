@@ -48,12 +48,18 @@
   }
 
   /* ----- New design ----- */
+  /* Colours come from the scheme variables (tokens.ts → tailwind.config.ts), so the
+     light/dark toggle only flips <html data-scheme>. */
   html[data-theme='ink'] {
     color-scheme: dark;
-    background-color: theme('colors.ink.DEFAULT');
+    background-color: rgb(var(--ink));
     /* No visible scrollbar on the redesigned pages; wheel, touch and keyboard scrolling
        are unaffected. The admin panel keeps its scrollbar. */
     scrollbar-width: none;
+  }
+
+  html[data-theme='ink'][data-scheme='light'] {
+    color-scheme: light;
   }
 
   html[data-theme='ink']::-webkit-scrollbar {
@@ -70,7 +76,7 @@
 
   .theme-ink,
   .theme-ink * {
-    border-color: theme('colors.hairline');
+    border-color: var(--hairline);
   }
 
   /* Display type: Clash Display semibold. :where() keeps specificity at one class, so a
@@ -88,7 +94,45 @@
 
   .theme-ink ::selection {
     background: theme('colors.spark.royal');
-    color: theme('colors.ink.DEFAULT');
+    color: #fff;
+  }
+
+  /* Light scheme: film grain becomes dark specks, and the hero's glowing network
+     (additive light on a dark page) is inverted into ink lines, with the hue turned
+     back so the blues stay blue. */
+  html[data-scheme='light'] .grain-layer {
+    filter: invert(1);
+  }
+  html[data-scheme='light'] .hero-visual {
+    filter: invert(1) hue-rotate(180deg);
+  }
+
+  /* Scheme switch: the new page is revealed by a circle (ThemeToggle animates its
+     clip-path), so the default cross-fade is turned off. */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+    mix-blend-mode: normal;
+  }
+
+  /* Article body: Tailwind Typography colours from the scheme variables. */
+  .prose-scheme {
+    --tw-prose-body: rgb(var(--bone) / 0.82);
+    --tw-prose-headings: rgb(var(--bone));
+    --tw-prose-lead: rgb(var(--bone-muted));
+    --tw-prose-links: theme('colors.spark.blue');
+    --tw-prose-bold: rgb(var(--bone));
+    --tw-prose-counters: rgb(var(--bone-muted));
+    --tw-prose-bullets: rgb(var(--bone-faint));
+    --tw-prose-hr: var(--hairline);
+    --tw-prose-quotes: rgb(var(--bone) / 0.82);
+    --tw-prose-quote-borders: theme('colors.spark.blue');
+    --tw-prose-captions: rgb(var(--bone-muted));
+    --tw-prose-code: rgb(var(--bone));
+    --tw-prose-pre-code: rgb(var(--bone));
+    --tw-prose-pre-bg: rgb(var(--ink-800));
+    --tw-prose-th-borders: var(--hairline);
+    --tw-prose-td-borders: var(--hairline);
   }
 
   /* ----- Legacy pages ----- */
@@ -123,14 +167,14 @@
 
   .text-outline {
     color: transparent;
-    -webkit-text-stroke: 1px rgba(242, 239, 232, 0.35);
+    -webkit-text-stroke: 1px rgb(var(--bone) / 0.35);
   }
 
   .glass {
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--glass);
     backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid theme('colors.hairline');
+    border: 1px solid var(--hairline);
   }
 
   .tabular {

@@ -36,6 +36,46 @@ export const palette = {
 /** Brand gradient (chrome → electric → royal, like the logo): text, borders, preloader curtain. */
 export const sparkGradient = `linear-gradient(100deg, ${palette.spark.silver} 0%, ${palette.spark.blue} 52%, ${palette.spark.royal} 100%)`;
 
+/**
+ * Colour schemes for the light/dark toggle. Tailwind's ink/bone/hairline colours read CSS
+ * variables, and these are their values: "ink" is always the surface and "bone" the text,
+ * so `bg-ink text-bone` (and the inverted `bg-bone text-ink` buttons) flip together.
+ * The brand blues stay the same in both. tailwind.config.ts writes these into :root
+ * (dark, the default) and html[data-scheme='light'].
+ */
+const channels = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).join(' ');
+
+export const schemes = {
+  dark: {
+    ink: channels(palette.ink.DEFAULT),
+    'ink-800': channels(palette.ink[800]),
+    'ink-700': channels(palette.ink[700]),
+    'ink-600': channels(palette.ink[600]),
+    bone: channels(palette.bone.DEFAULT),
+    'bone-muted': channels(palette.bone.muted),
+    'bone-faint': channels(palette.bone.faint),
+    hairline: 'rgba(255, 255, 255, 0.08)',
+    glass: 'rgba(255, 255, 255, 0.03)',
+    'spark-gradient': sparkGradient,
+  },
+  light: {
+    ink: channels('#F4F2ED'), // warm paper
+    'ink-800': channels('#ECE9E2'),
+    'ink-700': channels('#E3DFD7'),
+    'ink-600': channels('#D8D3CA'),
+    bone: channels('#0E0E10'), // near-black text
+    'bone-muted': channels('#55534E'), // 6.9:1 on paper
+    'bone-faint': channels('#9A968E'), // decorative only
+    hairline: 'rgba(14, 14, 16, 0.1)',
+    glass: 'rgba(255, 255, 255, 0.55)',
+    // Chrome is too pale on paper, so the gradient starts from a steel blue instead.
+    'spark-gradient': `linear-gradient(100deg, #4B5A75 0%, ${palette.spark.blue} 52%, ${palette.spark.royal} 100%)`,
+  },
+} as const;
+
+/** Page colour per scheme, for the browser UI (meta theme-color). */
+export const schemeThemeColor = { dark: palette.ink.DEFAULT, light: '#F4F2ED' } as const;
+
 /** Cubic-bezier curves shared by CSS, Framer Motion and GSAP. */
 export const ease = {
   /** Fast start, long soft landing: the default for reveals. */

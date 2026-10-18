@@ -28,8 +28,8 @@ export function SubNav({ label, items }: { label: string; items: Item[] }) {
   }, [pathname]);
 
   return (
-    // Sticks just under the header: 84px tall with the Menu button (below lg), 72px with the full nav.
-    <nav aria-label={label} className="sticky top-[83px] z-30 border-b bg-ink/80 backdrop-blur-xl lg:top-[71px]">
+    // Sticks flush under the header; --header-h is measured and set by HomeHeader.
+    <nav aria-label={label} className="sticky top-[calc(var(--header-h,84px)-1px)] z-30 border-b bg-ink/80 backdrop-blur-xl">
       <div className="mx-auto max-w-site px-gutter">
         <ul ref={listRef} className="scrollbar-hide relative -mx-1 flex gap-1 overflow-x-auto py-3">
           {items.map((item) => {
