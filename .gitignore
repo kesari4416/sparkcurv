@@ -1,7 +1,17 @@
 .env
 .env.*
+!.env.example
 *.env
 credentials.json
 *.pem
 *.key
 .credentials
+memory/test_credentials.md
+
+node_modules/
+build/
+__pycache__/
+*.pyc
+.venv/
+venv/
+chroma_db/
