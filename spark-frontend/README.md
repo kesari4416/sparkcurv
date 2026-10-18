@@ -15,16 +15,17 @@ yarn lint         # eslint (next/core-web-vitals + typescript)
 
 | Path | What |
 |---|---|
-| `src/app/(home)/` | Redesigned home page. `layout.tsx` = dark shell: Lenis, preloader, header (with the sticky CTA), footer, cursor, grain |
-| `src/app/(site)/` | Pages still on the original design. Each route renders a component from `src/views/` |
-| `src/app/admin/` | Admin panel (session context in `components/AdminShell.jsx`) |
-| `src/sections/` | Home sections, top to bottom: `Preloader`, `Hero` (+ `hero/`), `MarqueeBand`, `FeatureBento`, `PinnedStory`, `Stats`, `Testimonials`, `CTASlab`, `Footer` |
-| `src/components/` | Shared UI. New: `Cursor`, `Magnetic`, `RevealText`, `ScrambleText`, `SmoothScroll`, `Grain`, `AccentField`, `CTAButton`, `HomeHeader`, `DeferredChat`, `ThemeMarker`. Legacy: `Navigation`, `Footer`, `SEO`, `FAQSection`, `RichTextEditor` |
+| `src/app/(home)/` | Home page. Its layout is the shared shell (`components/SiteFrame.tsx`) plus the preloader |
+| `src/app/(site)/` | Every other public page: about, pricing, contact, blog, thank-you and the service pages, all on the same shell |
+| `src/app/admin/` | Admin panel, still on the original light theme (session context in `components/AdminShell.jsx`, pages in `src/views/Admin*`) |
+| `src/sections/` | Home sections (`Preloader`, `Hero` + `hero/`, `MarqueeBand`, `FeatureBento`, `PinnedStory`, `Stats`, `Industries`, `WhyUs`, `Testimonials`, `FAQ`, `CTASlab`, `Footer`) and inner-page sections: `page/` (hero, status screens), `service/` (service page template), `pricing/`, `about/`, `contact/`, `blog/` |
+| `src/components/` | Shared UI: `SiteFrame`, `HomeHeader`, `SectionIntro`, `Magnetic`, `RevealText`, `ScrambleText`, `SmoothScroll`, `Grain`, `AccentField`, `CTAButton`, `DeferredChat`, `ThemeMarker`. Admin only: `AdminShell`, `ErrorBoundary`, `RichTextEditor` |
 | `src/hooks/` | `useClock`, `useScramble`, `useRenderMode` (WebGL vs fallback), `useMediaQuery` |
-| `src/lib/` | `tokens.ts` (design tokens), `content.ts` (copy), `store.ts` (Zustand UI state), `pointer.ts` (shared mouse position), `device.ts` (capability checks), `api.js`, `sanitize.js`, `router.jsx` (react-router shim for legacy views) |
+| `src/lib/` | `tokens.ts` (design tokens), `content.ts` (home copy), `services.ts` (every service page), `pages.ts` (about, pricing), `store.ts` (Zustand UI state), `pointer.ts`, `device.ts`, `theme.ts`, `api.js`, `sanitize.js`, `router.jsx` (react-router shim, used by the admin views only) |
 
-New code is TypeScript. The legacy pages in `src/views/` are still JavaScript and are converted
-when they are redesigned.
+**Change page copy:** service pages are generated from `src/lib/services.ts` (add a sub-page there
+and its route, metadata and navigation follow); about and pricing copy is in `src/lib/pages.ts`.
+Copy comes from the live sparkcurv.com pages. The admin views are still JavaScript.
 
 ## Tweaking the theme
 
@@ -39,8 +40,8 @@ All brand values live in **`src/lib/tokens.ts`**:
 token updates CSS, motion and 3D together. Fonts (Clash Display for headlines, Satoshi for body, Geist Mono for labels; files and licence in `src/fonts`) are set in
 `src/app/layout.tsx` via `next/font` (self-hosted, subset, preloaded).
 
-The two themes are scoped in `src/app/globals.css`: `.theme-ink` (new) and `.theme-legacy`
-(original pages), so neither leaks into the other.
+The two themes are scoped in `src/app/globals.css`: `.theme-ink` (every public page) and
+`.theme-legacy` (the admin panel), so neither leaks into the other.
 
 ## Where the motion lives
 
@@ -57,7 +58,8 @@ The two themes are scoped in `src/app/globals.css`: `.theme-ink` (new) and `.the
 | Count-up stats | `sections/Stats.tsx` |
 | Drag + momentum carousel | `sections/testimonials/useDragScroll.ts` |
 | Particle burst on form submit | `sections/cta/particleBurst.ts` |
-| Custom cursor, magnetic buttons, text scramble | `components/Cursor.tsx`, `components/Magnetic.tsx`, `hooks/useScramble.ts` |
+| Magnetic buttons, text scramble | `components/Magnetic.tsx`, `hooks/useScramble.ts` |
+| Inner-page hero (headline reveal, picture wipe) | `sections/page/PageHero.tsx` |
 
 **Reduced motion:** `MotionConfig reducedMotion="user"` covers Framer Motion; GSAP/rAF code checks
 `prefersReducedMotion()` from `lib/device.ts`; `globals.css` stops CSS animations and hides the
