@@ -1,70 +1,75 @@
-# Getting Started with Create React App
+# spark-frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Next.js 16 (App Router) + React 19 + TypeScript + Tailwind CSS 3.
+How to install and run everything: see the [root README](../README.md).
 
-## Available Scripts
+```bash
+yarn dev          # http://localhost:3000 (needs the backend on :8001)
+yarn build        # production build (also type-checks)
+yarn start        # serve the production build
+yarn typecheck    # tsc --noEmit
+yarn lint         # eslint (next/core-web-vitals + typescript)
+```
 
-In the project directory, you can run:
+## Structure
 
-### `npm start`
+| Path | What |
+|---|---|
+| `src/app/(home)/` | Redesigned home page. `layout.tsx` = dark shell: Lenis, preloader, header (with the sticky CTA), footer, cursor, grain |
+| `src/app/(site)/` | Pages still on the original design. Each route renders a component from `src/views/` |
+| `src/app/admin/` | Admin panel (session context in `components/AdminShell.jsx`) |
+| `src/sections/` | Home sections, top to bottom: `Preloader`, `Hero` (+ `hero/`), `MarqueeBand`, `FeatureBento`, `PinnedStory`, `Stats`, `Testimonials`, `CTASlab`, `Footer` |
+| `src/components/` | Shared UI. New: `Cursor`, `Magnetic`, `RevealText`, `ScrambleText`, `SmoothScroll`, `Grain`, `AccentField`, `CTAButton`, `HomeHeader`, `DeferredChat`, `ThemeMarker`. Legacy: `Navigation`, `Footer`, `SEO`, `FAQSection`, `RichTextEditor` |
+| `src/hooks/` | `useClock`, `useScramble`, `useRenderMode` (WebGL vs fallback), `useMediaQuery` |
+| `src/lib/` | `tokens.ts` (design tokens), `content.ts` (copy), `store.ts` (Zustand UI state), `pointer.ts` (shared mouse position), `device.ts` (capability checks), `api.js`, `sanitize.js`, `router.jsx` (react-router shim for legacy views) |
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+New code is TypeScript. The legacy pages in `src/views/` are still JavaScript and are converted
+when they are redesigned.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Tweaking the theme
 
-### `npm test`
+All brand values live in **`src/lib/tokens.ts`**:
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- `palette`: ink (background), bone (text), spark blue/royal/silver (accents sampled from the logo), signal ok/error (status), hairline borders
+- `sparkGradient`: the brand gradient, chrome → electric → royal (text, borders, preloader curtain)
+- `ease` / `gsapEase` / `duration`: motion curves and timings
 
-### `npm run build`
+`tailwind.config.ts` turns them into classes (`bg-ink`, `text-bone-muted`, `bg-spark`,
+`text-display-xl`, `ease-expo-out`, …), and the WebGL shader reads the same colours, so changing a
+token updates CSS, motion and 3D together. Fonts (Clash Display for headlines, Satoshi for body, Geist Mono for labels; files and licence in `src/fonts`) are set in
+`src/app/layout.tsx` via `next/font` (self-hosted, subset, preloaded).
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+The two themes are scoped in `src/app/globals.css`: `.theme-ink` (new) and `.theme-legacy`
+(original pages), so neither leaks into the other.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Where the motion lives
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+| Effect | File |
+|---|---|
+| Smooth scroll (Lenis) driven by GSAP's ticker, synced with ScrollTrigger | `components/SmoothScroll.tsx` |
+| Preloader counter, logo mask, curtain wipe | `sections/Preloader.tsx` |
+| 3D network hero (plain three.js, THREE.Timer), cursor attraction, parallax | `sections/hero/HeroCanvas.tsx` |
+| Network shaders: nodes, links and data pulses | `sections/hero/shaders.ts` |
+| WebGL vs CSS fallback (low-power, reduced motion, no WebGL) | `hooks/useRenderMode.ts`, `sections/hero/HeroVisual.tsx` |
+| Word-by-word mask reveals | `components/RevealText.tsx` |
+| Velocity-reactive marquee | `sections/MarqueeBand.tsx` |
+| Pinned, scrubbed chapter story | `sections/PinnedStory.tsx` |
+| Count-up stats | `sections/Stats.tsx` |
+| Drag + momentum carousel | `sections/testimonials/useDragScroll.ts` |
+| Particle burst on form submit | `sections/cta/particleBurst.ts` |
+| Custom cursor, magnetic buttons, text scramble | `components/Cursor.tsx`, `components/Magnetic.tsx`, `hooks/useScramble.ts` |
 
-### `npm run eject`
+**Reduced motion:** `MotionConfig reducedMotion="user"` covers Framer Motion; GSAP/rAF code checks
+`prefersReducedMotion()` from `lib/device.ts`; `globals.css` stops CSS animations and hides the
+preloader. **Low-power devices** get the CSS hero instead of WebGL, and the pinned story becomes a
+plain stacked list on touch screens.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Performance notes
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- three.js loads in its own chunk (`next/dynamic`, no SSR), only on devices that render it, and
+  only after the visitor's first interaction; the canvas stops rendering when the hero is off screen.
+- Below-the-fold sections use `content-visibility: auto`; analytics loads when idle and the chat
+  widget on first interaction (`components/DeferredChat.tsx`).
+- Videos use `preload="none"` and posters, and only the visible one plays.
+- Pointer-driven effects read one shared listener (`lib/pointer.ts`) inside rAF loops; mouse
+  movement causes no React re-renders.

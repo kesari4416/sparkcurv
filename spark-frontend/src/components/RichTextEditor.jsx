@@ -1,12 +1,46 @@
+'use client';
+
 import { useRef, useCallback, useState, useEffect } from 'react';
-import axios from 'axios';
 import {
   Bold, Italic, Underline, List, ListOrdered,
   Heading1, Heading2, Heading3, Link, AlignLeft, AlignCenter,
   Quote, ImagePlus, Images, Type, Palette
 } from 'lucide-react';
+import { api, errorMessage } from '../lib/api';
+import { sanitizeHtml } from '../lib/sanitize';
 
-const API = process.env.REACT_APP_BACKEND_URL;
+// Must match the backend's upload checks (magic bytes: jpeg/png/gif/webp, max 5 MB).
+const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+// Returns an error message, or '' when the file can be uploaded.
+export const imageFileError = (file) => {
+  if (!IMAGE_TYPES.includes(file?.type)) return 'Only JPEG, PNG, GIF or WebP images are allowed.';
+  if (file.size > MAX_IMAGE_BYTES) return 'Image must be under 5 MB.';
+  return '';
+};
+
+// Uploads an image and resolves to its relative "/api/images/<id>" url.
+export const uploadImage = async (file) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  const { data } = await api.post('/upload/image', fd);
+  return data.url;
+};
+
+// Site-relative ("/path", but not "//host" or "/\host") or http(s)/mailto/tel only.
+const isSafeLink = (url) => {
+  if (/^\/(?![/\\])/.test(url)) return true;
+  try {
+    return ['http:', 'https:', 'mailto:', 'tel:'].includes(new URL(url).protocol);
+  } catch {
+    return false;
+  }
+};
+
+const escapeHtml = (text) => text
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 const FONT_SIZES = [
   { label: 'Small', value: '1' },
@@ -40,6 +74,8 @@ const RichTextEditor = ({ value, onChange, placeholder, onOpenGallery }) => {
   const colorBtnRef = useRef(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [activeColor, setActiveColor] = useState('#000000');
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   // Close color picker on outside click
   useEffect(() => {
@@ -52,8 +88,15 @@ const RichTextEditor = ({ value, onChange, placeholder, onOpenGallery }) => {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  // Last html synced into / emitted from the editor. Only real edits are reported, so the
+  // browser re-serializing loaded content (e.g. on blur) doesn't mark the post as changed.
+  const lastHtmlRef = useRef('');
+
   const handleChange = useCallback(() => {
-    if (editorRef.current) onChange(editorRef.current.innerHTML);
+    const html = editorRef.current?.innerHTML;
+    if (html === undefined || html === lastHtmlRef.current) return;
+    lastHtmlRef.current = html;
+    onChange(html);
   }, [onChange]);
 
   const exec = (command, val = null) => {
@@ -69,14 +112,21 @@ const RichTextEditor = ({ value, onChange, placeholder, onOpenGallery }) => {
   };
 
   const insertLink = () => {
-    const url = prompt('Enter URL:');
-    if (url) exec('createLink', url);
+    const url = prompt('Enter URL:')?.trim();
+    if (!url) return;
+    if (!isSafeLink(url)) {
+      alert('Links must start with http://, https://, mailto:, tel: or / (a page on this site).');
+      return;
+    }
+    exec('createLink', url);
   };
 
+  // styleWithCSS makes the browser emit <span style> instead of <font>.
   const applyColor = (color) => {
     setActiveColor(color);
     setShowColorPicker(false);
     editorRef.current?.focus();
+    document.execCommand('styleWithCSS', false, true);
     document.execCommand('foreColor', false, color);
     handleChange();
   };
@@ -86,7 +136,17 @@ const RichTextEditor = ({ value, onChange, placeholder, onOpenGallery }) => {
     if (!size) return;
     e.target.value = '';
     editorRef.current?.focus();
+    document.execCommand('styleWithCSS', false, true);
     document.execCommand('fontSize', false, size);
+    handleChange();
+  };
+
+  const handlePaste = (e) => {
+    const html = e.clipboardData?.getData('text/html');
+    const text = e.clipboardData?.getData('text/plain');
+    e.preventDefault();
+    const clean = html ? sanitizeHtml(html) : escapeHtml(text || '').replace(/\r\n|\r|\n/g, '<br>');
+    if (clean) document.execCommand('insertHTML', false, clean);
     handleChange();
   };
 
@@ -97,43 +157,58 @@ const RichTextEditor = ({ value, onChange, placeholder, onOpenGallery }) => {
     }
   };
 
-  const restoreRangeAndInsert = (url, filename) => {
-    editorRef.current?.focus();
-    if (savedRangeRef.current) {
+  // Built with DOM APIs so the url/alt are never parsed as HTML.
+  const insertImage = (url, alt) => {
+    const editor = editorRef.current;
+    if (!editor || !url) return;
+    editor.focus();
+    const img = document.createElement('img');
+    img.setAttribute('src', url);
+    img.setAttribute('alt', alt || 'image');
+    img.setAttribute('style', 'max-width:100%;height:auto;border-radius:6px;margin:8px 0;');
+    const range = savedRangeRef.current;
+    if (range && editor.contains(range.commonAncestorContainer)) {
+      range.deleteContents();
+      range.insertNode(img);
+      range.setStartAfter(img);
+      range.collapse(true);
       const sel = window.getSelection();
-      if (sel) { sel.removeAllRanges(); sel.addRange(savedRangeRef.current); }
+      if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+    } else {
+      editor.appendChild(img);
     }
-    document.execCommand('insertHTML', false,
-      `<img src="${url}" alt="${filename || 'image'}" style="max-width:100%;height:auto;border-radius:6px;margin:8px 0;" />`
-    );
+    savedRangeRef.current = null;
     handleChange();
   };
 
   const handleImageFileChange = async (e) => {
     const file = e.target.files[0];
-    if (!file) return;
     e.target.value = '';
-    const formData = new FormData();
-    formData.append('file', file);
+    if (!file) return;
+    const invalid = imageFileError(file);
+    setUploadError(invalid);
+    if (invalid) return;
+    setUploading(true);
     try {
-      const { data } = await axios.post(`${API}/api/upload/image`, formData, {
-        withCredentials: true,
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      restoreRangeAndInsert(`${API}${data.url}`, file.name);
-    } catch {
-      alert('Image upload failed. Please try again.');
+      const url = await uploadImage(file);
+      insertImage(url, file.name);
+    } catch (err) {
+      setUploadError(errorMessage(err, 'Image upload failed. Please try again.'));
+    } finally {
+      setUploading(false);
     }
   };
 
   const handleGalleryClick = () => {
     saveRange();
-    onOpenGallery?.((url) => restoreRangeAndInsert(url, 'gallery-image'));
+    onOpenGallery?.((url) => insertImage(url, 'gallery-image'));
   };
 
   const syncValue = useCallback((node) => {
     editorRef.current = node;
-    if (node && node.innerHTML !== value) node.innerHTML = value || '';
+    if (!node) return;
+    if (node.innerHTML !== value) node.innerHTML = value || '';
+    lastHtmlRef.current = node.innerHTML;
   }, [value]);
 
   return (
@@ -220,15 +295,26 @@ const RichTextEditor = ({ value, onChange, placeholder, onOpenGallery }) => {
         <Divider />
 
         {/* Images */}
-        <ToolbarButton onClick={() => { saveRange(); imageInputRef.current?.click(); }} title="Upload Image">
-          <ImagePlus className="w-3.5 h-3.5 text-[#02028B]" />
+        <ToolbarButton onClick={() => { if (uploading) return; saveRange(); imageInputRef.current?.click(); }}
+          title={uploading ? 'Uploading image...' : 'Upload Image'}>
+          {uploading
+            ? <div className="w-3.5 h-3.5 border-2 border-[#02028B]/20 border-t-[#02028B] rounded-full animate-spin" />
+            : <ImagePlus className="w-3.5 h-3.5 text-[#02028B]" />}
         </ToolbarButton>
         {onOpenGallery && (
           <ToolbarButton onClick={handleGalleryClick} title="Choose from Gallery">
             <Images className="w-3.5 h-3.5 text-[#02028B]" />
           </ToolbarButton>
         )}
+        {uploading && <span className="text-xs text-gray-500 ml-1">Uploading image...</span>}
       </div>
+
+      {uploadError && (
+        <div data-testid="rte-upload-error" className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-red-200 bg-red-50 text-xs text-red-700">
+          <span>{uploadError}</span>
+          <button type="button" onClick={() => setUploadError('')} className="text-red-500 hover:text-red-700">Dismiss</button>
+        </div>
+      )}
 
       {/* Hidden file input */}
       <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp"
@@ -240,6 +326,7 @@ const RichTextEditor = ({ value, onChange, placeholder, onOpenGallery }) => {
         contentEditable
         onInput={handleChange}
         onBlur={handleChange}
+        onPaste={handlePaste}
         data-testid="rich-text-editor"
         data-placeholder={placeholder || 'Write your blog content here...'}
         className="min-h-[300px] p-4 text-sm text-gray-700 outline-none prose prose-sm max-w-none

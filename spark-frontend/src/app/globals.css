@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Two themes live side by side:
+ *   .theme-ink    — the new dark design (every public page; components/SiteFrame.tsx)
+ *   .theme-legacy — the original light design, kept for the admin tool (app/admin)
+ * Every rule that used to be global in the old site is scoped to .theme-legacy,
+ * so neither theme leaks into the other during client-side navigation.
+ */
+
+@layer base {
+  :root {
+    /* shadcn variables used by the legacy pages */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 98%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 98%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 240 98% 28%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 80%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 240 98% 28%;
+    --radius: 0.5rem;
+  }
+
+  :focus-visible {
+    outline: 2px solid theme('colors.spark.blue');
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  /* Scroll is locked while the preloader runs. */
+  html.is-loading,
+  html.is-loading body {
+    overflow: hidden;
+  }
+
+  /* ----- New design ----- */
+  html[data-theme='ink'] {
+    color-scheme: dark;
+    background-color: theme('colors.ink.DEFAULT');
+    /* No visible scrollbar on the redesigned pages; wheel, touch and keyboard scrolling
+       are unaffected. The admin panel keeps its scrollbar. */
+    scrollbar-width: none;
+  }
+
+  html[data-theme='ink']::-webkit-scrollbar {
+    display: none;
+  }
+
+  .theme-ink {
+    @apply min-h-screen bg-ink font-sans text-bone antialiased;
+    /* clip (not hidden): stops 100vw-wide elements from adding a horizontal scrollbar
+       without creating a scroll container, so sticky/pinned sections keep working. */
+    overflow-x: clip;
+    text-rendering: optimizeLegibility;
+  }
+
+  .theme-ink,
+  .theme-ink * {
+    border-color: theme('colors.hairline');
+  }
+
+  /* Display type: Clash Display semibold. :where() keeps specificity at one class, so a
+     weight utility on the element (e.g. font-light for accent words) still wins. */
+  :where(.theme-ink) .font-display {
+    font-weight: 600;
+    /* Clash Display's space is narrow; with tight tracking, words ran together. */
+    word-spacing: 0.08em;
+  }
+
+  /* Balanced line breaks for headings: no orphaned last word ("…to / ship."). */
+  :where(.theme-ink) :is(h1, h2, h3) {
+    text-wrap: balance;
+  }
+
+  .theme-ink ::selection {
+    background: theme('colors.spark.royal');
+    color: theme('colors.ink.DEFAULT');
+  }
+
+  /* ----- Legacy pages ----- */
+  .theme-legacy {
+    @apply bg-white;
+    font-family: var(--font-inter), sans-serif;
+    font-weight: 400;
+    line-height: 1.6;
+    color: #1a1a1a;
+  }
+
+  .theme-legacy,
+  .theme-legacy * {
+    @apply border-border;
+  }
+
+  .theme-legacy :is(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--font-manrope), sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background-image: theme('backgroundImage.spark');
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .text-outline {
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(242, 239, 232, 0.35);
+  }
+
+  .glass {
+    background-color: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid theme('colors.hairline');
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/*
+ * Preloader: only on a hard load. The root layout puts .sc-first-load on <html>;
+ * it is removed after the first page has shown, so client-side navigation back
+ * to the home page never replays the preloader.
+ */
+.preloader {
+  display: none;
+}
+html.sc-first-load .preloader {
+  display: block;
+}
+
+/* Reduced motion: no preloader, no looping animations, everything visible. */
+@media (prefers-reduced-motion: reduce) {
+  html.sc-first-load .preloader {
+    display: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
