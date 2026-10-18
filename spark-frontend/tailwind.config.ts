@@ -128,7 +128,9 @@ const config = {
         "html[data-scheme='light']": vars(schemes.light),
         // Photo cards stay dark in both schemes: their imagery is dark and their light text
         // sits on an ink scrim. The class re-declares the dark values for that subtree.
-        '.scheme-dark': vars(schemes.dark),
+        // It also sets its own text colour, so text that would otherwise inherit the light
+        // page's dark ink stays readable inside.
+        '.scheme-dark': { ...vars(schemes.dark), color: 'rgb(var(--bone))' },
       });
     }),
     plugin(({ addUtilities }) => {

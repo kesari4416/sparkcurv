@@ -6,7 +6,10 @@ import { site } from '@/lib/content';
 import { PageHero } from '@/sections/page/PageHero';
 import { ProductLogo } from '@/sections/products/ProductLogo';
 import { PhonePreview, ProductPreview } from '@/sections/products/ProductPreview';
-import { ProductCTA, ProductExtras, ProductFlows, ProductModules, ProductPlatforms, ProductRoles } from '@/sections/products/ProductSections';
+import { ProductCTA, ProductExtras, ProductModules, ProductPlatforms } from '@/sections/products/ProductSections';
+import { JobWalkthrough, RoleDays } from '@/sections/products/ProductExplorer';
+import { DataInOut, FitCheck, GettingStarted, ProblemsSolved } from '@/sections/products/ProductGuide';
+import { LeakageCalculator } from '@/sections/products/LeakageCalculator';
 import { FAQ } from '@/sections/FAQ';
 
 type Props = { params: Promise<{ slug: string }> };
@@ -77,11 +80,17 @@ export default async function ProductPage({ params }: Props) {
         </div>
       </PageHero>
 
-      <ProductFlows product={product} />
+      {/* Problem → how it works → who uses it → what's inside → getting started → fit → questions. */}
+      <ProblemsSolved product={product} />
+      <JobWalkthrough product={product} />
+      <RoleDays product={product} />
+      {product.calculator && <LeakageCalculator product={product} />}
       <ProductModules product={product} />
       <ProductExtras product={product} />
-      <ProductRoles product={product} />
+      <GettingStarted product={product} />
+      <DataInOut product={product} />
       <ProductPlatforms product={product} />
+      <FitCheck product={product} />
       <FAQ items={product.faqs} />
       <ProductCTA product={product} />
     </>
