@@ -1,3 +1,4 @@
+import uuid
 """Tests for iteration 2 features: SEO fields, blog search/filter, contact leads"""
 import pytest
 import requests
@@ -8,7 +9,7 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL').rstrip('/')
 @pytest.fixture(scope="module")
 def auth_session():
     s = requests.Session()
-    r = s.post(f"{BASE_URL}/api/auth/login", json={"email": "admin@sparkcurv.com", "password": "SparkAdmin@2024"})
+    r = s.post(f"{BASE_URL}/api/auth/login", json={"email": os.environ["ADMIN_EMAIL"], "password": os.environ["ADMIN_PASSWORD"]})
     assert r.status_code == 200, f"Login failed: {r.text}"
     return s
 
@@ -129,7 +130,8 @@ class TestContactLeads:
             "services": "Web Development",
             "description": "Test enquiry description"
         }
-        r = requests.post(f"{BASE_URL}/api/contact", json=payload)
+        r = requests.post(f"{BASE_URL}/api/contact", json=payload,
+                          headers={"X-Real-IP": f"10.9.{uuid.uuid4().int % 250}.{uuid.uuid4().int % 250}"})  # own rate-limit bucket
         assert r.status_code == 200
         data = r.json()
         assert "id" in data

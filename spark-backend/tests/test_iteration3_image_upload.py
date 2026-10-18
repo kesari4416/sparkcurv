@@ -15,8 +15,8 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 def admin_session():
     session = requests.Session()
     resp = session.post(f"{BASE_URL}/api/auth/login", json={
-        "email": "admin@sparkcurv.com",
-        "password": "SparkAdmin@2024"
+        "email": os.environ["ADMIN_EMAIL"],
+        "password": os.environ["ADMIN_PASSWORD"]
     })
     assert resp.status_code == 200, f"Login failed: {resp.text}"
     return session
@@ -75,22 +75,22 @@ class TestImageUpload:
         print(f"Non-image rejection passed: {resp.json()}")
 
     def test_upload_rejects_oversized_file(self, admin_session):
-        """POST /api/upload/image rejects files over 5MB with 400"""
+        """POST /api/upload/image rejects files over 5MB with 413"""
         # Create a 6MB fake JPEG
         big_data = b'\xff\xd8\xff' + b'\x00' * (6 * 1024 * 1024)
         files = {"file": ("big.jpg", io.BytesIO(big_data), "image/jpeg")}
         resp = admin_session.post(f"{BASE_URL}/api/upload/image", files=files)
-        assert resp.status_code == 400, f"Expected 400, got {resp.status_code}: {resp.text}"
+        assert resp.status_code == 413, f"Expected 413, got {resp.status_code}: {resp.text}"
         print(f"Oversize rejection passed: {resp.json()}")
 
     def test_get_image_invalid_id(self):
-        """GET /api/images/invalid returns 400"""
+        """GET /api/images/invalid returns 422 (image ids are integers)"""
         resp = requests.get(f"{BASE_URL}/api/images/invalid-id")
-        assert resp.status_code == 400, f"Expected 400, got {resp.status_code}"
+        assert resp.status_code == 422, f"Expected 422, got {resp.status_code}"
         print("Invalid ID check passed")
 
     def test_get_image_not_found(self):
         """GET /api/images/{nonexistent} returns 404"""
-        resp = requests.get(f"{BASE_URL}/api/images/507f1f77bcf86cd799439011")
+        resp = requests.get(f"{BASE_URL}/api/images/99999999")
         assert resp.status_code == 404, f"Expected 404, got {resp.status_code}"
         print("Not found check passed")

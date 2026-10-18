@@ -9,8 +9,8 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 def auth_cookies():
     """Login and get auth cookies"""
     resp = requests.post(f"{BASE_URL}/api/auth/login", json={
-        "email": "admin@sparkcurv.com",
-        "password": "SparkAdmin@2024"
+        "email": os.environ["ADMIN_EMAIL"],
+        "password": os.environ["ADMIN_PASSWORD"]
     })
     if resp.status_code == 200:
         return resp.cookies
@@ -20,18 +20,18 @@ def auth_cookies():
 class TestAuth:
     def test_login_success(self):
         resp = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": "admin@sparkcurv.com",
-            "password": "SparkAdmin@2024"
+            "email": os.environ["ADMIN_EMAIL"],
+            "password": os.environ["ADMIN_PASSWORD"]
         })
         assert resp.status_code == 200
         data = resp.json()
-        assert data["email"] == "admin@sparkcurv.com"
+        assert data["email"] == os.environ["ADMIN_EMAIL"]
         assert data["role"] == "admin"
         assert "access_token" in resp.cookies
 
     def test_login_invalid_credentials(self):
         resp = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": "admin@sparkcurv.com",
+            "email": os.environ["ADMIN_EMAIL"],
             "password": "wrongpassword"
         })
         assert resp.status_code == 401
@@ -41,7 +41,7 @@ class TestAuth:
         resp = requests.get(f"{BASE_URL}/api/auth/me", cookies=auth_cookies)
         assert resp.status_code == 200
         data = resp.json()
-        assert data["email"] == "admin@sparkcurv.com"
+        assert data["email"] == os.environ["ADMIN_EMAIL"]
 
     def test_me_unauthenticated(self):
         resp = requests.get(f"{BASE_URL}/api/auth/me")

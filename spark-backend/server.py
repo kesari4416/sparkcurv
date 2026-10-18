@@ -1,22 +1,29 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File
-from fastapi.responses import Response as FastAPIResponse, StreamingResponse
+from fastapi import FastAPI, APIRouter, HTTPException, Request, Response, Depends, UploadFile, File, BackgroundTasks, Query
+from fastapi.responses import JSONResponse, Response as FastAPIResponse, StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 import os
 import logging
 import aiomysql
+import pymysql
 import bcrypt
 import jwt
 import re
 import secrets
 import base64
+import hashlib
+import html
 import io
+import ipaddress
 import json
+from contextlib import asynccontextmanager
+from types import SimpleNamespace
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
+import nh3
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -29,16 +36,28 @@ MYSQL_PORT     = int(os.environ.get("MYSQL_PORT", 3306))
 MYSQL_USER     = os.environ.get("MYSQL_USER", "spark")
 MYSQL_PASSWORD = os.environ.get("MYSQL_PASSWORD", "")
 MYSQL_DATABASE = os.environ.get("MYSQL_DATABASE", "spark_db")
-JWT_SECRET     = os.environ["JWT_SECRET"]
+JWT_SECRET     = os.environ.get("JWT_SECRET", "")
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET is not set. Add it to spark-backend/.env (see .env.example).")
 JWT_ALGORITHM  = "HS256"
-FRONTEND_URL   = os.environ.get("FRONTEND_URL", "http://localhost:3000")
+SESSION_HOURS  = 8
+COOKIE_SECURE  = os.environ.get("COOKIE_SECURE", "true").lower() != "false"
 SMTP_EMAIL     = os.environ.get("SMTP_EMAIL", "")
 SMTP_PASSWORD  = os.environ.get("SMTP_PASSWORD", "")
 NOTIFY_EMAIL   = os.environ.get("NOTIFY_EMAIL", "")
 
+# Cross-origin callers allowed to use the API. Not needed when the site and /api share
+# an origin (nginx.conf). FRONTEND_URL is still honoured for older .env files.
+CORS_ORIGINS = sorted({o.strip().rstrip("/") for o in
+                       os.environ.get("CORS_ORIGINS", "").split(",") + [os.environ.get("FRONTEND_URL", "")]
+                       if o.strip()})
+
+# The default admin password that shipped in this repo's history. Any account still
+# using it is locked on startup (see revoke_leaked_passwords).
+LEAKED_DEFAULT_PASSWORDS = ("SparkAdmin@2024",)
+
 pool = None
 
-app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
 
@@ -57,21 +76,115 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode(), hashed.encode())
+    try:
+        return bcrypt.checkpw(plain.encode(), hashed.encode())
+    except ValueError:  # locked account ("!") or malformed hash
+        return False
 
-def create_access_token(user_id: int, email: str) -> str:
+# Used so a login for an unknown email costs the same bcrypt time as a real one.
+_DUMMY_HASH = hash_password(secrets.token_urlsafe(16))
+
+def password_fingerprint(password_hash: str) -> str:
+    # Binds a token to the current password: changing it signs out every session.
+    return hashlib.sha256(f"{JWT_SECRET}:{password_hash}".encode()).hexdigest()[:16]
+
+def create_access_token(user: dict) -> str:
     payload = {
-        "sub": str(user_id), "email": email,
-        "exp": datetime.now(timezone.utc) + timedelta(hours=8),
+        "sub": str(user["id"]), "email": user["email"], "pwf": password_fingerprint(user["password_hash"]),
+        "exp": datetime.now(timezone.utc) + timedelta(hours=SESSION_HOURS),
         "type": "access"
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def set_auth_cookie(response: Response, token: str):
+    # Same-origin admin panel: Strict blocks the cookie on cross-site requests (CSRF).
+    response.set_cookie(key="access_token", value=token, httponly=True, secure=COOKIE_SECURE,
+                        samesite="strict", max_age=SESSION_HOURS * 3600, path="/")
+
+def clear_auth_cookie(response: Response):
+    # Attributes must match set_auth_cookie or browsers ignore the deletion.
+    response.delete_cookie("access_token", path="/", secure=COOKIE_SECURE, httponly=True, samesite="strict")
 
 def slugify(text: str) -> str:
     text = text.lower().strip()
     text = re.sub(r'[^\w\s-]', '', text)
     text = re.sub(r'[\s_-]+', '-', text)
-    return text
+    return text.strip('-')[:200]
+
+def is_duplicate_key(e: Exception) -> bool:
+    return isinstance(e, pymysql.err.IntegrityError) and e.args and e.args[0] == 1062
+
+
+# ─── Rate limiting ────────────────────────────────────────────────────────────
+# Sliding window stored in MySQL so every uvicorn worker shares the same counters.
+# Only used on low-volume endpoints (login, contact, password change).
+
+def client_ip(request: Request) -> str:
+    peer = request.client.host if request.client else ""
+    try:
+        trusted = ipaddress.ip_address(peer).is_private or ipaddress.ip_address(peer).is_loopback
+    except ValueError:
+        trusted = False
+    # Only trust X-Real-IP when the request came through a local reverse proxy (nginx).
+    return (request.headers.get("x-real-ip") if trusted else None) or peer or "unknown"
+
+def _bucket(key: str) -> str:
+    return hashlib.sha256(key.encode()).hexdigest()  # fixed length; keeps emails out of the table
+
+async def record_hit(key: str):
+    conn = await get_conn()
+    try:
+        async with conn.cursor() as cur:
+            await cur.execute("INSERT INTO rate_limits (bucket) VALUES (%s)", (_bucket(key),))
+    finally:
+        await release(conn)
+
+async def rate_limit(key: str, limit: int, window_seconds: int, record: bool = True):
+    """Raise 429 when `key` has `limit` hits in the window. record=False only checks."""
+    bucket = _bucket(key)
+    conn = await get_conn()
+    try:
+        async with conn.cursor() as cur:
+            await cur.execute("SELECT COUNT(*) FROM rate_limits WHERE bucket=%s "
+                              "AND created_at > NOW(3) - INTERVAL %s SECOND", (bucket, window_seconds))
+            (count,) = await cur.fetchone()
+            if count >= limit:
+                raise HTTPException(status_code=429, detail="Too many requests. Please try again later.")
+            if record:
+                await cur.execute("INSERT INTO rate_limits (bucket) VALUES (%s)", (bucket,))
+            if secrets.randbelow(100) == 0:  # occasional cleanup instead of a cron job
+                await cur.execute("DELETE FROM rate_limits WHERE created_at < NOW(3) - INTERVAL 1 DAY")
+    finally:
+        await release(conn)
+
+
+# ─── HTML sanitizing ──────────────────────────────────────────────────────────
+
+_ALLOWED_TAGS = {"p", "br", "div", "span", "font", "b", "strong", "i", "em", "u", "s", "strike",
+                 "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "blockquote", "pre", "code",
+                 "a", "img", "hr", "table", "thead", "tbody", "tr", "th", "td", "sub", "sup"}
+_ALLOWED_ATTRS = {
+    "a": {"href", "title", "target"},
+    "img": {"src", "alt", "title", "width", "height"},
+    "span": {"style"}, "p": {"style"}, "div": {"style"}, "li": {"style"},
+    "h1": {"style"}, "h2": {"style"}, "h3": {"style"}, "h4": {"style"},
+    "font": {"color", "size"},  # legacy execCommand output in existing posts
+    "td": {"colspan", "rowspan"}, "th": {"colspan", "rowspan"},
+}
+
+def sanitize_html(content: str) -> str:
+    return nh3.clean(content or "", tags=_ALLOWED_TAGS, attributes=_ALLOWED_ATTRS,
+                     url_schemes={"http", "https", "mailto", "tel"},
+                     filter_style_properties={"color", "background-color", "font-size", "font-weight",
+                                              "font-style", "text-align", "text-decoration"},
+                     link_rel="noopener noreferrer nofollow")
+
+# Older builds stored uploads as absolute URLs with whatever API host the build had
+# (e.g. http://localhost:8000/api/images/3). Store and serve them as relative paths.
+_ABS_IMAGE_URL = re.compile(r'https?://[^/"\'\s]+(/api/images/\d+)')
+
+def relative_image_urls(text: str) -> str:
+    return _ABS_IMAGE_URL.sub(r'\1', text) if text else text
 
 async def get_current_admin(request: Request):
     token = request.cookies.get("access_token")
@@ -94,10 +207,12 @@ async def get_current_admin(request: Request):
             await release(conn)
         if not user:
             raise HTTPException(status_code=403, detail="Admin access required")
+        if payload.get("pwf") != password_fingerprint(user["password_hash"]):
+            raise HTTPException(status_code=401, detail="Session expired. Please sign in again.")
         return user
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
+    except (jwt.InvalidTokenError, KeyError, ValueError):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 
@@ -105,70 +220,103 @@ async def get_current_admin(request: Request):
 
 class LoginRequest(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(max_length=200)
 
 class ContactCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=120)
     email: EmailStr
-    mobile: str
-    whatsapp: str
-    services: str
-    description: str
+    mobile: str = Field(min_length=1, max_length=20)
+    whatsapp: str = Field(min_length=1, max_length=20)
+    services: str = Field(min_length=1, max_length=120)
+    description: str = Field(min_length=1, max_length=2000)
+    company_website: Optional[str] = None  # honeypot: humans never see or fill it
+
+def _validate_image_url(v: Optional[str]) -> Optional[str]:
+    if not v:
+        return v
+    v = relative_image_urls(v.strip())
+    if not (v.startswith("/api/images/") or re.match(r"^https?://", v)):
+        raise ValueError("must be an uploaded image or an http(s) URL")
+    return v
+
+def _validate_tags(v: Optional[List[str]]) -> Optional[List[str]]:
+    if v is None:
+        return v
+    tags = [t.strip()[:50] for t in v if t and t.strip()]
+    if len(tags) > 30:
+        raise ValueError("at most 30 tags")
+    return tags
 
 class BlogCreate(BaseModel):
-    title: str
-    slug: Optional[str] = None
-    excerpt: str
-    content: str
-    image_url: Optional[str] = ""
-    author: str = "SparkCurv Team"
-    category: str = "Technology"
+    title: str = Field(min_length=1, max_length=500)
+    slug: Optional[str] = Field(None, max_length=200)
+    excerpt: str = Field(max_length=2000)
+    content: str = Field(max_length=2_000_000)
+    image_url: Optional[str] = Field("", max_length=2000)
+    author: str = Field("SparkCurv Team", max_length=255)
+    category: str = Field("Technology", max_length=255)
     tags: Optional[List[str]] = []
     published: bool = True
-    meta_title: Optional[str] = ""
-    meta_description: Optional[str] = ""
+    meta_title: Optional[str] = Field("", max_length=255)
+    meta_description: Optional[str] = Field("", max_length=1000)
+
+    _image = field_validator("image_url")(_validate_image_url)
+    _tags = field_validator("tags")(_validate_tags)
 
 class BlogUpdate(BaseModel):
-    title: Optional[str] = None
-    slug: Optional[str] = None
-    excerpt: Optional[str] = None
-    content: Optional[str] = None
-    image_url: Optional[str] = None
-    author: Optional[str] = None
-    category: Optional[str] = None
+    title: Optional[str] = Field(None, min_length=1, max_length=500)
+    slug: Optional[str] = Field(None, max_length=200)
+    excerpt: Optional[str] = Field(None, max_length=2000)
+    content: Optional[str] = Field(None, max_length=2_000_000)
+    image_url: Optional[str] = Field(None, max_length=2000)
+    author: Optional[str] = Field(None, max_length=255)
+    category: Optional[str] = Field(None, max_length=255)
     tags: Optional[List[str]] = None
     published: Optional[bool] = None
-    meta_title: Optional[str] = None
-    meta_description: Optional[str] = None
+    meta_title: Optional[str] = Field(None, max_length=255)
+    meta_description: Optional[str] = Field(None, max_length=1000)
+
+    _image = field_validator("image_url")(_validate_image_url)
+    _tags = field_validator("tags")(_validate_tags)
 
 class AdminUserCreate(BaseModel):
     email: EmailStr
-    name: str
-    password: str
+    name: str = Field(min_length=1, max_length=255)
+    password: str = Field(max_length=200)
+
+class PasswordChange(BaseModel):
+    current_password: str = Field(max_length=200)
+    new_password: str = Field(max_length=200)
+
+MIN_PASSWORD_LENGTH = 10
 
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 
 @api_router.post("/auth/login")
-async def login(data: LoginRequest, response: Response):
+async def login(data: LoginRequest, request: Request, response: Response):
+    email = data.email.lower()
+    # Only failed attempts count, so a valid admin is never throttled by their own logins.
+    ip_key, email_key = f"login-ip:{client_ip(request)}", f"login-email:{email}"
+    await rate_limit(ip_key, limit=20, window_seconds=900, record=False)
+    await rate_limit(email_key, limit=10, window_seconds=900, record=False)
     conn = await get_conn()
     try:
         async with conn.cursor(aiomysql.DictCursor) as cur:
-            await cur.execute("SELECT * FROM users WHERE email=%s", (data.email.lower(),))
+            await cur.execute("SELECT * FROM users WHERE email=%s AND role='admin'", (email,))
             user = await cur.fetchone()
     finally:
         await release(conn)
-    if not user or not verify_password(data.password, user["password_hash"]):
+    if not verify_password(data.password, user["password_hash"] if user else _DUMMY_HASH) or not user:
+        await record_hit(ip_key)
+        await record_hit(email_key)
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    token = create_access_token(user["id"], user["email"])
-    response.set_cookie(key="access_token", value=token,
-        httponly=True, secure=True, samesite="none", max_age=28800, path="/")
-    return {"id": user["id"], "email": user["email"], "name": user.get("name", ""),
-            "role": user["role"], "token": token}
+    set_auth_cookie(response, create_access_token(user))
+    return {"id": user["id"], "email": user["email"], "name": user.get("name", ""), "role": user["role"]}
 
 @api_router.post("/auth/logout")
 async def logout(response: Response):
-    response.delete_cookie("access_token", path="/", samesite="none")
+    clear_auth_cookie(response)
     return {"message": "Logged out"}
 
 @api_router.get("/auth/me")
@@ -176,10 +324,36 @@ async def me(admin=Depends(get_current_admin)):
     return {"id": admin["id"], "email": admin["email"],
             "name": admin.get("name", ""), "role": admin["role"]}
 
+@api_router.post("/auth/change-password")
+async def change_password(data: PasswordChange, request: Request, admin=Depends(get_current_admin)):
+    # Throttles guessing the current password with a stolen session; only wrong guesses count.
+    key = f"change-pw:{admin['id']}"
+    await rate_limit(key, limit=10, window_seconds=900, record=False)
+    if not verify_password(data.current_password, admin["password_hash"]):
+        await record_hit(key)
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if len(data.new_password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(status_code=400, detail=f"New password must be at least {MIN_PASSWORD_LENGTH} characters")
+    if data.new_password == data.current_password or data.new_password in LEAKED_DEFAULT_PASSWORDS:
+        raise HTTPException(status_code=400, detail="Choose a different password")
+    conn = await get_conn()
+    try:
+        async with conn.cursor() as cur:
+            await cur.execute("UPDATE users SET password_hash=%s WHERE id=%s",
+                              (hash_password(data.new_password), admin["id"]))
+            await conn.commit()
+    finally:
+        await release(conn)
+    return {"message": "Password updated"}
+
 
 # ─── Blogs ────────────────────────────────────────────────────────────────────
 
 def row_to_blog(row: dict) -> dict:
+    if row:
+        row["image_url"] = relative_image_urls(row.get("image_url") or "")
+        # Also sanitized on read: posts saved before sanitizing existed are still raw in the DB.
+        row["content"] = sanitize_html(relative_image_urls(row.get("content") or ""))
     if row and isinstance(row.get("tags"), str):
         try:
             row["tags"] = json.loads(row["tags"])
@@ -228,20 +402,27 @@ async def get_blog(slug: str):
 
 @api_router.post("/blogs")
 async def create_blog(data: BlogCreate, admin=Depends(get_current_admin)):
-    slug = data.slug or slugify(data.title)
+    slug = slugify(data.slug or "") or slugify(data.title)
+    if not slug:
+        raise HTTPException(status_code=400, detail="Title or slug must contain letters or numbers")
     conn = await get_conn()
     try:
         async with conn.cursor(aiomysql.DictCursor) as cur:
             await cur.execute("SELECT id FROM blogs WHERE slug=%s", (slug,))
             if await cur.fetchone():
                 slug = f"{slug}-{secrets.token_hex(3)}"
-            await cur.execute("""
-                INSERT INTO blogs (title, slug, excerpt, content, image_url, author, category,
-                    tags, published, meta_title, meta_description)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            """, (data.title, slug, data.excerpt, data.content, data.image_url or "",
-                  data.author, data.category, json.dumps(data.tags or []),
-                  int(data.published), data.meta_title or "", data.meta_description or ""))
+            try:
+                await cur.execute("""
+                    INSERT INTO blogs (title, slug, excerpt, content, image_url, author, category,
+                        tags, published, meta_title, meta_description)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (data.title, slug, data.excerpt, sanitize_html(data.content), data.image_url or "",
+                      data.author, data.category, json.dumps(data.tags or []),
+                      int(data.published), data.meta_title or "", data.meta_description or ""))
+            except pymysql.err.IntegrityError as e:
+                if is_duplicate_key(e):
+                    raise HTTPException(status_code=409, detail="A post with this slug already exists")
+                raise
             await conn.commit()
             blog_id = cur.lastrowid
             await cur.execute("SELECT * FROM blogs WHERE id=%s", (blog_id,))
@@ -253,32 +434,38 @@ async def create_blog(data: BlogCreate, admin=Depends(get_current_admin)):
 @api_router.put("/blogs/{blog_id}")
 async def update_blog(blog_id: int, data: BlogUpdate, admin=Depends(get_current_admin)):
     fields, values = [], []
-    raw = data.model_dump()
-    for k, v in raw.items():
-        if v is None:
-            continue
+    for k, v in data.model_dump(exclude_none=True).items():
         if k == "tags":
-            fields.append("tags=%s"); values.append(json.dumps(v))
+            v = json.dumps(v)
         elif k == "published":
-            fields.append("published=%s"); values.append(int(v))
-        else:
-            fields.append(f"{k}=%s"); values.append(v)
-    if "title" in raw and raw["title"] and "slug" not in raw:
-        fields.append("slug=%s"); values.append(slugify(raw["title"]))
+            v = int(v)
+        elif k == "content":
+            v = sanitize_html(v)
+        elif k == "slug":
+            v = slugify(v)
+            if not v:
+                raise HTTPException(status_code=400, detail="Slug must contain letters or numbers")
+        fields.append(f"{k}=%s"); values.append(v)  # k comes from the BlogUpdate schema, not the client
     if not fields:
         raise HTTPException(status_code=400, detail="No fields to update")
     values.append(blog_id)
     conn = await get_conn()
     try:
         async with conn.cursor(aiomysql.DictCursor) as cur:
-            await cur.execute(f"UPDATE blogs SET {', '.join(fields)}, updated_at=NOW() WHERE id=%s", values)
+            try:
+                await cur.execute(f"UPDATE blogs SET {', '.join(fields)}, updated_at=NOW() WHERE id=%s", values)
+            except pymysql.err.IntegrityError as e:
+                if is_duplicate_key(e):
+                    raise HTTPException(status_code=409, detail="A post with this slug already exists")
+                raise
             await conn.commit()
-            if cur.rowcount == 0:
-                raise HTTPException(status_code=404, detail="Blog not found")
+            # rowcount is 0 when nothing changed, so check existence with a read instead.
             await cur.execute("SELECT * FROM blogs WHERE id=%s", (blog_id,))
             row = await cur.fetchone()
     finally:
         await release(conn)
+    if not row:
+        raise HTTPException(status_code=404, detail="Blog not found")
     return row_to_blog(dict(row))
 
 @api_router.delete("/blogs/{blog_id}")
@@ -297,23 +484,36 @@ async def delete_blog(blog_id: int, admin=Depends(get_current_admin)):
 
 # ─── Images ───────────────────────────────────────────────────────────────────
 
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
+
+def sniff_image_type(data: bytes) -> Optional[str]:
+    # Trust the file's bytes, not the client-supplied Content-Type.
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    return None
 
 @api_router.post("/upload/image")
 async def upload_image(file: UploadFile = File(...), admin=Depends(get_current_admin)):
-    if file.content_type not in ALLOWED_IMAGE_TYPES:
-        raise HTTPException(status_code=400, detail="Only JPEG, PNG, GIF, and WebP images are allowed")
-    data = await file.read()
+    data = await file.read(MAX_IMAGE_SIZE + 1)
     if len(data) > MAX_IMAGE_SIZE:
-        raise HTTPException(status_code=400, detail="Image must be under 5 MB")
+        raise HTTPException(status_code=413, detail="Image must be under 5 MB")
+    content_type = sniff_image_type(data)
+    if not content_type:
+        raise HTTPException(status_code=400, detail="Only JPEG, PNG, GIF, and WebP images are allowed")
+    filename = os.path.basename(file.filename or "image")[:255]
     b64 = base64.b64encode(data).decode("utf-8")
     conn = await get_conn()
     try:
         async with conn.cursor() as cur:
             await cur.execute(
                 "INSERT INTO images (filename, content_type, data) VALUES (%s,%s,%s)",
-                (file.filename, file.content_type, b64)
+                (filename, content_type, b64)
             )
             await conn.commit()
             image_id = cur.lastrowid
@@ -333,14 +533,20 @@ async def get_image(image_id: int):
     if not row:
         raise HTTPException(status_code=404, detail="Image not found")
     image_data = base64.b64decode(row["data"])
-    return FastAPIResponse(content=image_data, media_type=row["content_type"])
+    # An image id never changes content, so it can be cached for good.
+    return FastAPIResponse(content=image_data, media_type=row["content_type"], headers={
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+    })
 
 @api_router.get("/images")
-async def list_images(admin=Depends(get_current_admin)):
+async def list_images(admin=Depends(get_current_admin),
+                      limit: int = Query(500, ge=1, le=2000), offset: int = Query(0, ge=0)):
     conn = await get_conn()
     try:
         async with conn.cursor(aiomysql.DictCursor) as cur:
-            await cur.execute("SELECT id, filename, content_type, created_at FROM images ORDER BY created_at DESC")
+            await cur.execute("SELECT id, filename, content_type, created_at FROM images "
+                              "ORDER BY created_at DESC LIMIT %s OFFSET %s", (limit, offset))
             rows = await cur.fetchall()
     finally:
         await release(conn)
@@ -378,18 +584,25 @@ async def list_admin_users(admin=Depends(get_current_admin)):
 
 @api_router.post("/admin/users")
 async def create_admin_user(data: AdminUserCreate, admin=Depends(get_current_admin)):
-    if len(data.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+    if len(data.password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
+    if data.password in LEAKED_DEFAULT_PASSWORDS:
+        raise HTTPException(status_code=400, detail="Choose a different password")
     conn = await get_conn()
     try:
         async with conn.cursor() as cur:
             await cur.execute("SELECT id FROM users WHERE email=%s", (data.email.lower(),))
             if await cur.fetchone():
                 raise HTTPException(status_code=400, detail="A user with this email already exists")
-            await cur.execute(
-                "INSERT INTO users (email, name, password_hash, role) VALUES (%s,%s,%s,'admin')",
-                (data.email.lower(), data.name, hash_password(data.password))
-            )
+            try:
+                await cur.execute(
+                    "INSERT INTO users (email, name, password_hash, role) VALUES (%s,%s,%s,'admin')",
+                    (data.email.lower(), data.name, hash_password(data.password))
+                )
+            except pymysql.err.IntegrityError as e:
+                if is_duplicate_key(e):
+                    raise HTTPException(status_code=400, detail="A user with this email already exists")
+                raise
             await conn.commit()
             user_id = cur.lastrowid
     finally:
@@ -415,7 +628,12 @@ async def delete_admin_user(user_id: int, admin=Depends(get_current_admin)):
 # ─── Contact ──────────────────────────────────────────────────────────────────
 
 @api_router.post("/contact")
-async def submit_contact(data: ContactCreate):
+async def submit_contact(data: ContactCreate, request: Request, background_tasks: BackgroundTasks):
+    await rate_limit(f"contact:{client_ip(request)}", limit=5, window_seconds=600)
+    if data.company_website:
+        # Honeypot filled in: almost certainly a bot. Pretend it worked, store nothing.
+        logger.info("Contact honeypot triggered from %s", client_ip(request))
+        return {"id": 0, "message": "Enquiry submitted successfully"}
     word_count = len(data.description.strip().split())
     if word_count > 200:
         raise HTTPException(status_code=400, detail="Description must be 200 words or less")
@@ -425,23 +643,53 @@ async def submit_contact(data: ContactCreate):
             await cur.execute("""
                 INSERT INTO contacts (name, email, mobile, whatsapp, services, description)
                 VALUES (%s,%s,%s,%s,%s,%s)
-            """, (data.name, data.email, data.mobile, data.whatsapp, data.services, data.description))
+            """, (data.name.strip(), data.email, data.mobile.strip(), data.whatsapp.strip(),
+                  data.services.strip(), data.description.strip()))
             await conn.commit()
             contact_id = cur.lastrowid
     finally:
         await release(conn)
-    try:
-        send_enquiry_email(data)
-    except Exception as e:
-        logger.error(f"Email failed: {e}")
+    # smtplib blocks; run it after the response instead of stalling the event loop.
+    background_tasks.add_task(send_enquiry_email, data)
     return {"id": contact_id, "message": "Enquiry submitted successfully"}
 
+class QuickEnquiry(BaseModel):
+    email: EmailStr
+    company_website: Optional[str] = None  # honeypot, same as the contact form
+
+
+@api_router.post("/quick-enquiry")
+async def quick_enquiry(data: QuickEnquiry, request: Request, background_tasks: BackgroundTasks):
+    """Email-only lead from the home page CTA. Stored as a contact so it shows in the admin Leads tab."""
+    await rate_limit(f"contact:{client_ip(request)}", limit=5, window_seconds=600)
+    if data.company_website:
+        logger.info("Quick-enquiry honeypot triggered from %s", client_ip(request))
+        return {"message": "Thanks! We'll be in touch shortly."}
+    lead = SimpleNamespace(
+        name="Website visitor", email=data.email, mobile="", whatsapp="",
+        services="Quick enquiry (home page)",
+        description="Left their email on the home page and asked to be contacted.",
+    )
+    conn = await get_conn()
+    try:
+        async with conn.cursor() as cur:
+            await cur.execute("""
+                INSERT INTO contacts (name, email, mobile, whatsapp, services, description)
+                VALUES (%s,%s,%s,%s,%s,%s)
+            """, (lead.name, lead.email, lead.mobile, lead.whatsapp, lead.services, lead.description))
+    finally:
+        await release(conn)
+    background_tasks.add_task(send_enquiry_email, lead)
+    return {"message": "Thanks! We'll be in touch shortly."}
+
+
 @api_router.get("/contact")
-async def get_contacts(admin=Depends(get_current_admin)):
+async def get_contacts(admin=Depends(get_current_admin),
+                       limit: int = Query(1000, ge=1, le=5000), offset: int = Query(0, ge=0)):
     conn = await get_conn()
     try:
         async with conn.cursor(aiomysql.DictCursor) as cur:
-            await cur.execute("SELECT * FROM contacts ORDER BY created_at DESC")
+            await cur.execute("SELECT * FROM contacts ORDER BY created_at DESC LIMIT %s OFFSET %s", (limit, offset))
             rows = await cur.fetchall()
     finally:
         await release(conn)
@@ -617,12 +865,15 @@ async def root():
 async def health():
     try:
         conn = await get_conn()
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT 1")
-        await release(conn)
+        try:
+            async with conn.cursor() as cur:
+                await cur.execute("SELECT 1")
+        finally:
+            await release(conn)
         return {"status": "healthy", "database": "MySQL connected"}
     except Exception as e:
-        return {"status": "unhealthy", "error": str(e)}
+        logger.error(f"Health check failed: {e}")
+        return JSONResponse(status_code=503, content={"status": "unhealthy"})
 
 
 # ─── Email ────────────────────────────────────────────────────────────────────
@@ -631,27 +882,32 @@ def send_enquiry_email(contact):
     if not SMTP_EMAIL or not SMTP_PASSWORD or not NOTIFY_EMAIL:
         return
     try:
+        # Everything here is visitor input: escape it for HTML and keep it on one line in headers.
+        safe = {k: html.escape(str(getattr(contact, k)).strip())
+             for k in ("name", "email", "mobile", "whatsapp", "services", "description")}
+        one_line = lambda s: re.sub(r"[\r\n]+", " ", str(s)).strip()[:150]
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = f'New Enquiry from {contact.name} - {contact.services}'
+        msg['Subject'] = f'New Enquiry from {one_line(contact.name)} - {one_line(contact.services)}'
         msg['From'] = SMTP_EMAIL
         msg['To'] = NOTIFY_EMAIL
-        html = f"""<html><body style="font-family:Arial,sans-serif;">
+        msg['Reply-To'] = one_line(contact.email)
+        body = f"""<html><body style="font-family:Arial,sans-serif;">
             <div style="max-width:600px;margin:auto;background:white;border-radius:12px;">
                 <div style="background:#02028B;padding:24px;text-align:center;">
                     <h1 style="color:white;margin:0;font-size:22px;">New Enquiry Received</h1>
                 </div>
                 <div style="padding:24px;">
-                    <p><strong>Name:</strong> {contact.name}</p>
-                    <p><strong>Email:</strong> {contact.email}</p>
-                    <p><strong>Mobile:</strong> {contact.mobile}</p>
-                    <p><strong>WhatsApp:</strong> {contact.whatsapp}</p>
-                    <p><strong>Service:</strong> {contact.services}</p>
-                    <p><strong>Description:</strong> {contact.description}</p>
+                    <p><strong>Name:</strong> {safe['name']}</p>
+                    <p><strong>Email:</strong> {safe['email']}</p>
+                    <p><strong>Mobile:</strong> {safe['mobile']}</p>
+                    <p><strong>WhatsApp:</strong> {safe['whatsapp']}</p>
+                    <p><strong>Service:</strong> {safe['services']}</p>
+                    <p><strong>Description:</strong> {safe['description'].replace(chr(10), '<br>')}</p>
                 </div>
             </div>
         </body></html>"""
-        msg.attach(MIMEText(html, 'html'))
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        msg.attach(MIMEText(body, 'html'))
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=20) as server:
             server.login(SMTP_EMAIL, SMTP_PASSWORD)
             server.sendmail(SMTP_EMAIL, NOTIFY_EMAIL, msg.as_string())
     except Exception as e:
@@ -660,34 +916,34 @@ def send_enquiry_email(contact):
 
 # ─── App Setup ────────────────────────────────────────────────────────────────
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # No try/except: if the database is unreachable the process should exit and be
+    # restarted, rather than serve 500s while looking alive.
+    global pool
+    pool = await aiomysql.create_pool(
+        host=MYSQL_HOST, port=MYSQL_PORT,
+        user=MYSQL_USER, password=MYSQL_PASSWORD,
+        # autocommit: with it off, a pooled connection that only ran SELECTs keeps its
+        # REPEATABLE READ snapshot open and keeps returning stale rows (old password
+        # hashes, missing new posts). No endpoint needs a multi-statement transaction.
+        db=MYSQL_DATABASE, autocommit=True,
+        minsize=2, maxsize=10, charset='utf8mb4'
+    )
+    logger.info("MySQL connected")
+    await create_tables()
+    await revoke_leaked_passwords()
+    await seed_admin()
+    yield
+    pool.close()
+    await pool.wait_closed()
+
+app = FastAPI(lifespan=lifespan)
 app.include_router(api_router)
 
-cors_origins = [FRONTEND_URL, "http://localhost:3000"]
-app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=cors_origins,
-    allow_methods=["*"], allow_headers=["*"])
-
-
-@app.on_event("startup")
-async def startup():
-    global pool
-    try:
-        pool = await aiomysql.create_pool(
-            host=MYSQL_HOST, port=MYSQL_PORT,
-            user=MYSQL_USER, password=MYSQL_PASSWORD,
-            db=MYSQL_DATABASE, autocommit=False,
-            minsize=2, maxsize=10, charset='utf8mb4'
-        )
-        logger.info("MySQL connected")
-        await create_tables()
-        await seed_admin()
-    except Exception as e:
-        logger.error(f"Startup error: {e}")
-
-@app.on_event("shutdown")
-async def shutdown():
-    if pool:
-        pool.close()
-        await pool.wait_closed()
+if CORS_ORIGINS:
+    app.add_middleware(CORSMiddleware, allow_credentials=True, allow_origins=CORS_ORIGINS,
+        allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["Content-Type"])
 
 
 async def create_tables():
@@ -743,6 +999,14 @@ async def create_tables():
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                 ) CHARACTER SET utf8mb4
             """)
+            await cur.execute("""
+                CREATE TABLE IF NOT EXISTS rate_limits (
+                    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                    bucket CHAR(64) NOT NULL,
+                    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+                    INDEX idx_bucket_time (bucket, created_at)
+                ) CHARACTER SET utf8mb4
+            """)
             await conn.commit()
         logger.info("Tables ready")
     finally:
@@ -750,26 +1014,57 @@ async def create_tables():
 
 
 async def seed_admin():
-    admin_email    = os.environ.get("ADMIN_EMAIL", "admin@sparkcurv.com").lower()
-    admin_password = os.environ.get("ADMIN_PASSWORD", "SparkAdmin@2024")
+    """Create the first admin from ADMIN_EMAIL/ADMIN_PASSWORD when no usable admin exists.
+
+    Never overwrites a working password, so passwords changed in the admin panel stick.
+    The one exception is recovery: if ADMIN_EMAIL is an account locked by
+    revoke_leaked_passwords and it was the last admin, its password is set from env.
+    """
+    admin_email    = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    admin_password = os.environ.get("ADMIN_PASSWORD", "")
+    conn = await get_conn()
+    try:
+        async with conn.cursor() as cur:
+            await cur.execute("SELECT COUNT(*) FROM users WHERE role='admin' AND password_hash<>'!'")
+            (admin_count,) = await cur.fetchone()
+            if admin_count:
+                if admin_password:
+                    logger.info("Admin already exists; ADMIN_PASSWORD is ignored and can be removed from .env")
+                return
+            if not admin_email or not admin_password:
+                logger.warning("No usable admin exists. Set ADMIN_EMAIL and ADMIN_PASSWORD to create one.")
+                return
+            if len(admin_password) < MIN_PASSWORD_LENGTH or admin_password in LEAKED_DEFAULT_PASSWORDS:
+                logger.error(f"ADMIN_PASSWORD rejected: use at least {MIN_PASSWORD_LENGTH} characters, not a known default")
+                return
+            password_hash = hash_password(admin_password)
+            await cur.execute("UPDATE users SET password_hash=%s WHERE email=%s AND password_hash='!'",
+                              (password_hash, admin_email))
+            if not cur.rowcount:
+                # INSERT IGNORE: several uvicorn workers run this at the same time.
+                await cur.execute(
+                    "INSERT IGNORE INTO users (email, name, password_hash, role) VALUES (%s,'Admin',%s,'admin')",
+                    (admin_email, password_hash)
+                )
+            await conn.commit()
+            if cur.rowcount:
+                logger.info(f"Admin seeded: {admin_email}")
+    finally:
+        await release(conn)
+
+
+async def revoke_leaked_passwords():
+    """Lock any account still using a password that was published in this repo."""
     conn = await get_conn()
     try:
         async with conn.cursor(aiomysql.DictCursor) as cur:
-            await cur.execute("SELECT * FROM users WHERE email=%s", (admin_email,))
-            existing = await cur.fetchone()
-            if not existing:
-                await cur.execute(
-                    "INSERT INTO users (email, name, password_hash, role) VALUES (%s,'Admin',%s,'admin')",
-                    (admin_email, hash_password(admin_password))
-                )
-                logger.info(f"Admin seeded: {admin_email}")
-            else:
-                if not verify_password(admin_password, existing["password_hash"]):
-                    await cur.execute(
-                        "UPDATE users SET password_hash=%s WHERE email=%s",
-                        (hash_password(admin_password), admin_email)
-                    )
-                    logger.info("Admin password updated")
+            await cur.execute("SELECT id, email, password_hash FROM users WHERE password_hash<>'!'")
+            for user in await cur.fetchall():
+                if any(verify_password(p, user["password_hash"]) for p in LEAKED_DEFAULT_PASSWORDS):
+                    # "!" is not a valid bcrypt hash, so no password can match it.
+                    await cur.execute("UPDATE users SET password_hash='!' WHERE id=%s", (user["id"],))
+                    logger.warning(f"Locked {user['email']}: it used a leaked default password. "
+                                   "Delete it from the admin panel's Team tab.")
             await conn.commit()
     finally:
         await release(conn)
