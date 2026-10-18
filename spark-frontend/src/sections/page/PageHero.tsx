@@ -20,6 +20,8 @@ type PageHeroProps = {
   image?: string;
   /** Small label over the image, e.g. "02 / 06". */
   imageLabel?: string;
+  /** Custom content for the right-hand slot when there is no image (e.g. a product's logo). */
+  visual?: React.ReactNode;
   /** Buttons or links under the description. */
   actions?: React.ReactNode;
   /** Anything else under the hero grid (stats, meta). */
@@ -31,7 +33,7 @@ type PageHeroProps = {
  * word, the intro paragraph and, when there is one, a picture uncovered from the bottom.
  * A field of dots and the three brand glows sit behind it (CSS only).
  */
-export function PageHero({ eyebrow, lead, accent, description, crumbs, image, imageLabel, actions, children }: PageHeroProps) {
+export function PageHero({ eyebrow, lead, accent, description, crumbs, image, imageLabel, visual, actions, children }: PageHeroProps) {
   const play = useUI((s) => s.introDone);
   const words = (lead ? lead.split(' ').length : 0) + accent.split(' ').length;
   const after = 0.25 + words * 0.07; // when the headline has finished rising
@@ -136,6 +138,12 @@ export function PageHero({ eyebrow, lead, accent, description, crumbs, image, im
                 <figcaption className="absolute bottom-5 left-5 font-mono text-eyebrow uppercase text-bone/80">{imageLabel}</figcaption>
               )}
             </motion.figure>
+          )}
+
+          {!image && visual && (
+            <motion.div {...fade(after)} className="lg:col-span-4 lg:col-start-9">
+              {visual}
+            </motion.div>
           )}
         </div>
 

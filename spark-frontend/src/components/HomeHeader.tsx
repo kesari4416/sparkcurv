@@ -18,7 +18,8 @@ import { ThemeToggle } from './ThemeToggle';
 type MenuState = { path: string; x: number; y: number; radius: number };
 
 const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
-const DESKTOP = '(min-width: 1024px)'; // Tailwind lg
+// Full nav from Tailwind xl: with nine links (Products added), it doesn't fit below 1280px.
+const DESKTOP = '(min-width: 1280px)'; // Tailwind xl
 
 export function HomeHeader() {
   const introDone = useUI((s) => s.introDone);
@@ -163,19 +164,19 @@ export function HomeHeader() {
             <Wordmark />
           </Link>
 
-          <p className="hidden font-mono text-eyebrow uppercase text-bone/70 md:block lg:hidden">AI · Cloud · Product · Growth</p>
+          <p className="hidden font-mono text-eyebrow uppercase text-bone/70 md:block xl:hidden">AI · Cloud · Product · Growth</p>
 
-          <nav aria-label="Main" className="hidden lg:block">
-            <ul className="flex items-center gap-6 xl:gap-9">
+          <nav aria-label="Main" className="hidden xl:block">
+            <ul className="flex items-center gap-6 2xl:gap-9">
               {nav.map((item) => {
-                const current = pathname === item.href;
+                const current = pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
                 return (
                   <li key={item.href}>
                     <Link
                       href={item.href}
                       aria-current={current ? 'page' : undefined}
                       className={cn(
-                        'group relative block py-2 font-mono text-eyebrow uppercase transition-colors duration-300',
+                        'group relative block whitespace-nowrap py-2 font-mono text-eyebrow uppercase transition-colors duration-300',
                         current ? 'text-bone' : 'text-bone/70 hover:text-bone focus-visible:text-bone',
                       )}
                     >
@@ -202,8 +203,8 @@ export function HomeHeader() {
             <div className="relative flex items-center">
               <p
                 className={cn(
-                  'hidden font-mono text-eyebrow uppercase text-bone/70 transition-[opacity,transform] duration-500 ease-expo-out sm:block',
-                  pastHero && 'lg:pointer-events-none lg:-translate-y-2 lg:opacity-0',
+                  'hidden whitespace-nowrap font-mono text-eyebrow uppercase text-bone/70 transition-[opacity,transform] duration-500 ease-expo-out sm:block',
+                  pastHero && 'xl:pointer-events-none xl:-translate-y-2 xl:opacity-0',
                 )}
               >
                 <span className="sr-only">Local time in India: </span>
@@ -215,7 +216,7 @@ export function HomeHeader() {
               <div
                 inert={!pastHero}
                 className={cn(
-                  'absolute right-0 top-1/2 hidden transition-[opacity,transform] duration-500 ease-expo-out lg:block',
+                  'absolute right-0 top-1/2 hidden transition-[opacity,transform] duration-500 ease-expo-out xl:block',
                   pastHero ? '-translate-y-1/2 opacity-100' : 'pointer-events-none -translate-y-[30%] opacity-0',
                 )}
               >
@@ -223,7 +224,7 @@ export function HomeHeader() {
               </div>
             </div>
 
-            <ThemeToggle className="glass h-11 w-11 lg:hidden" />
+            <ThemeToggle className="glass h-11 w-11 xl:hidden" />
 
             <button
               ref={toggleRef}
@@ -231,7 +232,7 @@ export function HomeHeader() {
               onClick={toggle}
               aria-expanded={open}
               aria-controls={menuId}
-              className="glass inline-flex h-11 items-center gap-3 rounded-full pl-5 pr-4 font-mono text-eyebrow uppercase text-bone transition-colors duration-300 hover:bg-bone/10 lg:hidden"
+              className="glass inline-flex h-11 items-center gap-3 rounded-full pl-5 pr-4 font-mono text-eyebrow uppercase text-bone transition-colors duration-300 hover:bg-bone/10 xl:hidden"
             >
               <span className="inline-block min-w-[5ch] text-left">{open ? 'Close' : 'Menu'}</span>
               {/* Two bars that rotate into an X. */}
@@ -295,12 +296,12 @@ function MenuPanel({ id, menu, reduce, pathname, time, onNavigate, ref }: MenuPa
       exit={reduce ? { opacity: 0 } : { clipPath: `circle(0px ${at})` }}
       transition={{ duration: reduce ? 0 : 0.85, ease: ease.inOut }}
       data-lenis-prevent
-      className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-contain bg-ink-800 px-gutter pb-10 pt-28 lg:hidden"
+      className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-contain bg-ink-800 px-gutter pb-10 pt-28 xl:hidden"
     >
       <nav aria-label="Main">
         <ul>
           {nav.map((item, i) => {
-            const current = pathname === item.href;
+            const current = pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
             return (
               <li key={item.href} className="-mb-[0.1em] overflow-hidden pb-[0.1em]">
                 <motion.div {...rise(0.3 + i * 0.05)}>

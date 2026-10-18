@@ -4,6 +4,7 @@ import { Hero } from '@/sections/Hero';
 import { MarqueeBand } from '@/sections/MarqueeBand';
 import { Partners } from '@/sections/Partners';
 import { FeatureBento } from '@/sections/FeatureBento';
+import { ProductsShowcase } from '@/sections/products/ProductsShowcase';
 import { PinnedStory } from '@/sections/PinnedStory';
 import { Stats } from '@/sections/Stats';
 import { Testimonials } from '@/sections/Testimonials';
@@ -41,6 +42,7 @@ export default function HomePage() {
       <MarqueeBand />
       <Partners />
       <FeatureBento />
+      <ProductsShowcase />
       <PinnedStory />
       <Stats />
       <Industries />

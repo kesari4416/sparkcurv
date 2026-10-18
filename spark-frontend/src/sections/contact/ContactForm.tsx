@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ChevronDown } from 'lucide-react';
 // api.js is a plain JS module (allowJs); its exports are untyped.
 import { api, errorMessage } from '@/lib/api';
@@ -25,7 +25,15 @@ export const SERVICE_OPTIONS = [
   'CI/CD automation',
   'Database Management',
   '24/7 Monitoring Support',
+  'Sitera (product demo)',
+  'BuildNexa (product demo)',
 ];
+
+/** ?product=… from a product page's "Book a demo" preselects the service. */
+const PRODUCT_SERVICE: Record<string, string> = {
+  sitera: 'Sitera (product demo)',
+  buildnexa: 'BuildNexa (product demo)',
+};
 
 const countWords = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
 
@@ -39,11 +47,15 @@ const field =
 const label =
   'pointer-events-none absolute left-0 top-7 origin-left font-sans text-lg text-bone-muted transition-all duration-300 ease-expo-out peer-focus:top-0 peer-focus:text-xs peer-focus:uppercase peer-focus:tracking-[0.16em] peer-focus:text-spark-blue peer-[:not(:placeholder-shown)]:top-0 peer-[:not(:placeholder-shown)]:text-xs peer-[:not(:placeholder-shown)]:uppercase peer-[:not(:placeholder-shown)]:tracking-[0.16em]';
 
-/** Full enquiry form: posts to POST /api/contact, then shows the thank-you page. */
+/**
+ * Full enquiry form: posts to POST /api/contact, then shows the thank-you page.
+ * Reads ?product= from the URL, so the page renders it inside <Suspense>.
+ */
 export function ContactForm() {
   const router = useRouter();
   const id = useId();
-  const [form, setForm] = useState<FormState>(EMPTY);
+  const product = useSearchParams().get('product') ?? '';
+  const [form, setForm] = useState<FormState>(() => ({ ...EMPTY, services: PRODUCT_SERVICE[product] ?? '' }));
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
   const [trimmed, setTrimmed] = useState(false);

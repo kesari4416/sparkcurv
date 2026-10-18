@@ -61,6 +61,7 @@ export const nav = [
   { label: 'Cloud', href: '/managed-cloud-service' },
   { label: 'Apps', href: '/application-development' },
   { label: 'Growth', href: '/digital-growth' },
+  { label: 'Products', href: '/products' },
   { label: 'Pricing', href: '/pricing' },
   { label: 'About', href: '/about' },
   { label: 'Blog', href: '/blog' },

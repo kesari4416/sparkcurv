@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { AtSign, MapPin, Share2 } from 'lucide-react';
 import { site, socials } from '@/lib/content';
 import { PageHero } from '@/sections/page/PageHero';
@@ -86,7 +87,10 @@ export default function ContactPage() {
             <h2 id="enquiry-title" className="mb-10 font-display text-[clamp(1.75rem,3vw,2.5rem)] leading-tight tracking-[-0.02em] text-bone">
               Send an enquiry
             </h2>
-            <ContactForm />
+            {/* The form reads ?product= from the URL, which Next.js requires inside Suspense. */}
+            <Suspense>
+              <ContactForm />
+            </Suspense>
           </div>
         </div>
       </section>
