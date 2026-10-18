@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useUI } from '@/lib/store';
 import { ease } from '@/lib/tokens';
@@ -56,8 +57,23 @@ export function Hero() {
           <motion.div {...riseUp(0.75)} className="md:col-span-5">
             <p className="max-w-[40ch] text-base leading-relaxed text-bone md:text-lg md:text-bone-muted">{hero.intro}</p>
             {/* Once this scrolls out of view, a compact copy appears in the header (HomeHeader). */}
-            <div id="hero-cta" className="mt-8">
-              <CTAButton size="lg" />
+            <div className="mt-8 flex flex-wrap items-center gap-x-8 gap-y-5">
+              <div id="hero-cta">
+                <CTAButton size="lg" />
+              </div>
+              <Link
+                href={hero.secondaryCta.href}
+                className="group relative inline-flex items-center gap-2 pb-1 text-base text-bone/80 transition-colors hover:text-bone md:text-lg"
+              >
+                {hero.secondaryCta.label}
+                <span aria-hidden className="inline-block transition-transform duration-500 ease-expo-out group-hover:translate-x-1">
+                  →
+                </span>
+                <span
+                  aria-hidden
+                  className="absolute inset-x-0 bottom-0 h-px origin-right bg-spark motion-safe:scale-x-0 motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-expo-out motion-safe:group-hover:origin-left motion-safe:group-hover:scale-x-100"
+                />
+              </Link>
             </div>
           </motion.div>
         </div>

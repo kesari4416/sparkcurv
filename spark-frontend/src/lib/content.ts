@@ -10,6 +10,17 @@ export const site = {
   phone: '+91 96774 95028',
   address: ['64/3 Thompson Street, Palace Road', 'Nagercoil, Tamil Nadu 629001'],
   salesOffice: 'Sales office: Bangalore, Karnataka',
+  /** Footer line from the live site. */
+  tagline:
+    'Turning ideas into digital brilliance. We craft sleek apps, stunning websites, and smart tech solutions to power your success.',
+  /**
+   * The live site's floating WhatsApp button. NOTE: it opens +91 90437 65028, while the
+   * phone shown everywhere else is +91 96774 95028. Confirm which is right.
+   */
+  whatsapp: {
+    number: '919043765028',
+    message: 'Hello SparkCurv! I would like to know more about your services.',
+  },
   timeZone: 'Asia/Kolkata',
   timeZoneLabel: 'IST',
   description:
@@ -28,6 +39,7 @@ export const hero = {
     'At SparkCurv, we transform bold ideas into market-ready realities through cutting-edge technology and innovative design.',
   services: ['AI & ML services', 'Managed cloud', 'Application development', 'Digital growth & outsourcing'],
   cta: { label: 'Start a project', href: '/contact' },
+  secondaryCta: { label: 'Meet our team', href: '/about' },
 };
 
 /**
@@ -59,7 +71,7 @@ export const nav = [
 export const features = [
   {
     title: 'AI & ML services',
-    body: 'Intelligent automation and predictive analytics, from proof of concept to production models.',
+    body: 'Transform your business with intelligent automation and predictive analytics powered by cutting-edge AI.',
     href: '/ai-ml',
     image: '/images/services/ai-ml-hero.jpg',
     size: 'xl',
@@ -101,7 +113,7 @@ export const features = [
   },
   {
     title: 'Web development',
-    body: 'Custom web platforms for e-commerce, healthcare, education, finance and more.',
+    body: 'Custom web and mobile apps for every industry: e-commerce, healthcare, education, finance and more.',
     href: '/application-development/web-development',
     image: '/images/platforms/webdev-hero.jpg',
     icon: 'browser',
@@ -119,7 +131,7 @@ export const features = [
   },
   {
     title: 'Branding & digital marketing',
-    body: 'Identity design and data-driven growth campaigns.',
+    body: 'Grow your brand with branding, digital marketing, and scalable outsourcing solutions, from identity design to dedicated teams.',
     href: '/digital-growth',
     image: '/images/services/digital-marketing-hero.jpg',
     size: 'wide',
@@ -246,19 +258,30 @@ export const differentiators = [
   { title: 'Cost-aware', body: 'Proactive reviews to reduce your cloud spend, not grow it.' },
 ];
 
-/** FAQ (company-level questions from the home, pricing and digital growth pages). */
+/**
+ * FAQ: the live home page FAQ (first five, verbatim), then company-level questions from
+ * the live pricing and digital growth pages.
+ */
 export const faqs = [
   {
-    q: 'How do I get a quote for my project?',
-    a: 'Visit our contact page and share your requirements. We offer a free initial consultation, and our team sends a detailed proposal within 24–48 hours.',
+    q: 'What services does SparkCurv offer?',
+    a: 'SparkCurv provides a comprehensive suite of IT services including AI & ML Solutions, Managed Cloud Services, Application Development (Web & Mobile), Digital Marketing, Branding, and IT Outsourcing. We deliver end-to-end technology solutions tailored to your business needs.',
+  },
+  {
+    q: 'How can I get a quote for my project?',
+    a: 'Simply visit our Contact page or click the WhatsApp button to reach out. Share your project requirements and our team will provide a detailed proposal within 24-48 hours. We offer free initial consultations to understand your needs.',
   },
   {
     q: 'Do you work with startups and enterprises?',
-    a: 'Yes, businesses of all sizes, from early-stage startups to established enterprises. Our engagement models scale to your scope, budget and timeline.',
+    a: 'Yes, we work with businesses of all sizes — from early-stage startups to established enterprises. Our flexible engagement models allow us to scale our services to match your project scope, budget, and timeline.',
   },
   {
-    q: 'Do you work with businesses outside India?',
-    a: 'Yes. We serve clients globally and work across time zones, with flexible hours that overlap with US, European and APAC teams.',
+    q: 'Where is SparkCurv located?',
+    a: 'Our main branch is in Nagercoil, Tamil Nadu, and we have a sales office in Bangalore, Karnataka. We serve clients globally and offer both on-site and remote engagement models.',
+  },
+  {
+    q: 'What industries do you serve?',
+    a: 'We serve a wide range of industries including E-commerce, Healthcare, Education, Finance, Real Estate, Travel, Food & Restaurant, Logistics, and more. Our cross-industry experience enables us to deliver domain-specific solutions.',
   },
   {
     q: 'Who owns the cloud account and the code?',
@@ -267,10 +290,6 @@ export const faqs = [
   {
     q: 'What contract terms are required?',
     a: 'Ongoing management is month-to-month with 30 days notice. New architecture build-outs run 6 to 12 months depending on complexity. There is no lock-in for standard management.',
-  },
-  {
-    q: 'Where is SparkCurv located?',
-    a: 'Our main branch is in Nagercoil, Tamil Nadu, with a sales office in Bangalore, Karnataka. We work with clients on-site and remotely.',
   },
 ];
 
@@ -291,3 +310,13 @@ export const marqueeWords = [
   'Figma',
   'Python',
 ]
+
+/** Partners strip (the live home page's "We're Working With"). Logos in public/images/partners. */
+export const partners = [
+  { name: 'GeekyAnts', logo: '/images/partners/geekyants.webp' },
+  { name: 'Softean', logo: '/images/partners/softean.webp' },
+  { name: 'Resonacle', logo: '/images/partners/resonacle.webp' },
+  { name: 'Kallardo', logo: '/images/partners/kallardo.webp' },
+  { name: 'Linuxoft', logo: '/images/partners/linuxoft.webp' },
+  { name: 'DevDukes', logo: '/images/partners/devdukes.webp' },
+];

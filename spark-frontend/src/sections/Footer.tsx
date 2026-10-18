@@ -51,6 +51,7 @@ export function Footer() {
   return (
     <footer className="relative isolate overflow-hidden border-t bg-ink pt-24 md:pt-32">
       <div className="mx-auto max-w-site px-gutter">
+        <p className="mb-16 max-w-[46ch] text-xl leading-snug text-bone-muted md:mb-20 md:text-2xl">{site.tagline}</p>
         <div className="grid gap-14 md:grid-cols-12 md:gap-x-8">
           {/* Contact */}
           <div className="md:col-span-12 lg:col-span-6">

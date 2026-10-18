@@ -3,6 +3,7 @@ import { HomeHeader } from '@/components/HomeHeader';
 import { Grain } from '@/components/Grain';
 import { ThemeMarker } from '@/components/ThemeMarker';
 import { FirstLoadDone } from '@/components/FirstLoadDone';
+import { WhatsAppButton } from '@/components/WhatsAppButton';
 import { Preloader } from '@/sections/Preloader';
 import { Footer } from '@/sections/Footer';
 
@@ -26,6 +27,7 @@ export function SiteFrame({ children, preloader = false }: { children: React.Rea
         <HomeHeader />
         <main id="main">{children}</main>
         <Footer />
+        <WhatsAppButton />
         <Grain />
       </Providers>
     </div>
