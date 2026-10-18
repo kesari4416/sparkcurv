@@ -1,32 +1,28 @@
-import { useId } from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/cn';
-import { palette } from '@/lib/tokens';
 
-/** Four-point spark in the brand gradient. */
+/*
+ * The SparkCurv logo, rebuilt for dark backgrounds:
+ *  - sparkcurv-mark.webp: the ring mark, from the transparent SPARKCURVEICON.png.
+ *  - sparkcurv-wordmark.webp: "SPARKCURV Technologies®" lifted off the white background
+ *    of sparkcurv-logo.png in the logo's own grey and blue.
+ * Both are lossless and served as-is (unoptimized), so the lettering never picks up
+ * compression artefacts.
+ */
+const MARK = { src: '/images/logo/sparkcurv-mark.webp', width: 125, height: 120 };
+const WORDMARK = { src: '/images/logo/sparkcurv-wordmark.webp', width: 423, height: 84 };
+
+/** The ring mark on its own (separators in the hero ticker and the marquee). */
 export function SparkGlyph({ className }: { className?: string }) {
-  const id = useId();
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden className={className}>
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor={palette.spark.blue} />
-          <stop offset="0.5" stopColor={palette.spark.royal} />
-          <stop offset="1" stopColor={palette.spark.silver} />
-        </linearGradient>
-      </defs>
-      <path
-        fill={`url(#${id})`}
-        d="M12 0c.6 5.9 2.7 8.9 9.6 10.8L24 12l-2.4 1.2C14.7 15.1 12.6 18.1 12 24c-.6-5.9-2.7-8.9-9.6-10.8L0 12l2.4-1.2C9.3 8.9 11.4 5.9 12 0Z"
-      />
-    </svg>
-  );
+  return <Image src={MARK.src} width={MARK.width} height={MARK.height} alt="" aria-hidden unoptimized className={cn('object-contain', className)} />;
 }
 
+/** Full logo lockup: mark + lettering. Decorative; the enclosing link carries the name. */
 export function Wordmark({ className }: { className?: string }) {
   return (
-    <span className={cn('inline-flex items-center gap-2 font-display leading-none tracking-tight', className)}>
-      <SparkGlyph className="h-[0.7em] w-[0.7em]" />
-      SparkCurv
+    <span className={cn('inline-flex items-center gap-2.5 md:gap-3', className)}>
+      <Image src={MARK.src} width={MARK.width} height={MARK.height} alt="" priority unoptimized className="h-9 w-auto md:h-12" />
+      <Image src={WORDMARK.src} width={WORDMARK.width} height={WORDMARK.height} alt="" priority unoptimized className="h-5 w-auto md:h-[30px]" />
     </span>
   );
 }
