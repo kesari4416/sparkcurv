@@ -314,4 +314,5 @@ export const partners = [
   { name: 'Kallardo', logo: '/images/partners/kallardo.webp' },
   { name: 'RRB Construction', logo: '/images/partners/rrb-construction.webp' },
   { name: 'DevDukes', logo: '/images/partners/devdukes.webp' },
+  { name: 'Temple Chit Funds', logo: '/images/partners/temple-chit-funds.webp' },
 ];
