@@ -4,6 +4,16 @@
  */
 import type { Faq } from './services';
 
+export type TeamMember = {
+  name: string;
+  role: string;
+  /** Photo in public/images/team. */
+  image: string;
+  /** Clean profile URL, without share-tracking parameters. */
+  linkedin: string;
+  summary: string;
+};
+
 /* ----- About ------------------------------------------------------------------------- */
 
 export const about = {
@@ -32,11 +42,32 @@ export const about = {
     'To be a globally recognized technology partner that empowers businesses of all sizes to achieve digital excellence. We envision a world where every business has access to world-class technology solutions that drive innovation, efficiency, and sustainable growth.',
   mission:
     'To deliver cutting-edge, reliable, and scalable technology solutions that transform how businesses operate. We are committed to building long-term partnerships and combining technical expertise with creative thinking to turn ambitious ideas into market-ready digital products.',
+  /** Summaries are drafted from each person's title only; replace them with their own wording. */
   team: [
-    { name: 'Ponish Jino', role: 'Founder & CEO' },
-    { name: 'Arun Kumar', role: 'Co-founder & CFO' },
-    { name: 'Merbin Bejo', role: 'Project Manager · AI/ML Engineer' },
-  ],
+    {
+      name: 'Ponish Jino',
+      role: 'Founder & CEO',
+      image: '/images/team/mem-2.webp',
+      linkedin: 'https://www.linkedin.com/in/ponish-jino-099172170',
+      summary:
+        'Founder and CEO of SparkCurv Technologies. Sets the company’s direction and leads the team behind our AI, cloud, app development and digital growth work.',
+    },
+    {
+      name: 'Arun Kumar',
+      role: 'Co-founder & CFO',
+      image: '/images/team/mem-1.webp',
+      linkedin: 'https://www.linkedin.com/in/arun-kumar-615b7b333',
+      summary: 'Co-founder and CFO of SparkCurv Technologies. Looks after the company’s finances alongside the founding team.',
+    },
+    {
+      name: 'Merbin Bejo',
+      role: 'Project Manager · AI/ML Engineer',
+      image: '/images/team/IMG_4214.webp',
+      linkedin: 'https://www.linkedin.com/in/merbin-bejo',
+      summary:
+        'Project Manager and AI/ML Engineer at SparkCurv Technologies. Works on the machine learning side of client projects and helps keep them on track.',
+    },
+  ] satisfies TeamMember[],
   join: {
     title: 'Join our team',
     body: "We're always looking for talented people.",

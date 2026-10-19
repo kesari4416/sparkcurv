@@ -3,7 +3,8 @@ import { about } from '@/lib/pages';
 import { site } from '@/lib/content';
 import { CTAButton } from '@/components/CTAButton';
 import { PageHero } from '@/sections/page/PageHero';
-import { AboutStats, Story, Team, VisionMission } from '@/sections/about/AboutSections';
+import { AboutStats, Story, VisionMission } from '@/sections/about/AboutSections';
+import { Team } from '@/sections/about/Team';
 import { FAQ } from '@/sections/FAQ';
 import { CTASlab } from '@/sections/CTASlab';
 

@@ -4,7 +4,6 @@ import { useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { Compass, Telescope } from 'lucide-react';
 import { about } from '@/lib/pages';
-import { site } from '@/lib/content';
 import { useUI } from '@/lib/store';
 import { ease } from '@/lib/tokens';
 import { SectionIntro } from '@/components/SectionIntro';
@@ -102,84 +101,6 @@ export function VisionMission() {
             </motion.article>
           ))}
         </div>
-      </div>
-    </section>
-  );
-}
-
-/** Initials for a team card: "Ponish Jino" becomes "PJ". */
-const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-
-/**
- * Team cards without photos: a monogram in a glass disc, with name and role on the card.
- * Hover (or focus within): the monogram eases up, a brand tint rises from the bottom and a
- * gradient hairline lights the frame, the same language as the home page tiles.
- */
-export function Team() {
-  return (
-    <section aria-labelledby="team-title" className="pb-24 md:pb-36 [content-visibility:auto] [contain-intrinsic-size:auto_900px]">
-      <div className="mx-auto max-w-site px-gutter">
-        <SectionIntro
-          id="team-title"
-          eyebrow="The people"
-          lead="Meet the"
-          accent="team."
-          aside={
-            <a
-              href={`mailto:${site.email}?subject=${encodeURIComponent('Joining SparkCurv')}`}
-              className="group relative inline-flex items-center gap-2 pb-1 text-base text-bone md:text-lg"
-            >
-              <span className="text-bone-muted transition-colors duration-300 group-hover:text-bone">{about.join.body}</span> Join us
-              <span aria-hidden className="inline-block transition-transform duration-500 ease-expo-out group-hover:translate-x-1">
-                →
-              </span>
-            </a>
-          }
-          className="mb-12 md:mb-16"
-        />
-        <ul className="grid grid-cols-2 gap-4 md:gap-5 lg:grid-cols-4">
-          {about.team.map((m, i) => (
-            <motion.li
-              key={m.name}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: '0px 0px -10% 0px' }}
-              transition={{ duration: 0.9, ease: ease.out, delay: (i % 4) * 0.08 }}
-              className="scheme-dark group relative rounded-3xl p-px"
-            >
-              {/* Frame: a hairline at rest, the brand gradient on hover. */}
-              <span aria-hidden className="absolute inset-0 rounded-3xl bg-hairline" />
-              <span
-                aria-hidden
-                className="absolute inset-0 animate-gradient-pan rounded-3xl bg-spark bg-[length:200%_100%] opacity-0 transition-opacity duration-700 group-hover:opacity-100"
-              />
-              <div className="relative aspect-[4/5] overflow-hidden rounded-[calc(1.5rem-1px)] bg-ink-800">
-                <div aria-hidden className="absolute inset-0 grid place-items-center">
-                  <span className="glass grid h-24 w-24 place-items-center rounded-full transition-transform duration-[1400ms] ease-expo-out group-hover:scale-[1.06] md:h-32 md:w-32">
-                    <span className="font-display text-3xl leading-none tracking-[-0.02em] text-gradient md:text-4xl">{initials(m.name)}</span>
-                  </span>
-                </div>
-                {/* Legibility scrim for the caption. */}
-                <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent" />
-                {/* Brand tint rising from the bottom on hover. */}
-                <div
-                  aria-hidden
-                  className="absolute inset-0 translate-y-1/4 bg-gradient-to-t from-spark-royal/45 via-spark-blue/10 to-transparent opacity-0 transition-[opacity,transform] duration-700 ease-expo-out group-hover:translate-y-0 group-hover:opacity-100"
-                />
-                <div className="absolute inset-x-0 bottom-0 p-4 md:p-6">
-                  <h3 className="font-display text-lg leading-tight tracking-[-0.015em] text-bone md:text-2xl">{m.name}</h3>
-                  <p className="mt-1 text-xs leading-snug text-bone/75 md:text-sm">{m.role}</p>
-                </div>
-              </div>
-            </motion.li>
-          ))}
-        </ul>
       </div>
     </section>
   );
