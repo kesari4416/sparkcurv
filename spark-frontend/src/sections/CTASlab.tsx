@@ -19,7 +19,9 @@ export function CTASlab() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const burstRef = useRef<ReturnType<typeof createParticleBurst> | null>(null);
-  const inView = useInView(sectionRef, { once: true, amount: 0.3 });
+  // Fires as soon as the top of the slab is ~10% into the viewport. The slab is taller
+  // than most screens, so waiting for a share of it to be visible started the reveal late.
+  const inView = useInView(sectionRef, { once: true, margin: '0px 0px -10% 0px' });
   // Only used for transition timing: `initial` must match the server render (where this is null).
   const reduce = useReducedMotion();
   const [email, setEmail] = useState('');
@@ -78,7 +80,7 @@ export function CTASlab() {
       <motion.div
         initial={{ clipPath: 'circle(0% at 50% 100%)' }}
         animate={inView ? { clipPath: 'circle(150% at 50% 100%)' } : undefined}
-        transition={{ duration: reduce ? 0 : 1.6, ease: ease.inOut }}
+        transition={{ duration: reduce ? 0 : 0.9, ease: ease.out }}
         className="relative isolate bg-ink-800 py-28 md:py-44"
       >
         {/* Large soft glow: layered radials in the three brand hues. */}
@@ -107,7 +109,7 @@ export function CTASlab() {
                   text={line}
                   play={inView}
                   // Wait for the circle to open far enough to see the words rise.
-                  delay={0.45 + i * 0.18}
+                  delay={0.15 + i * 0.12}
                   wordClassName={i === 1 ? 'text-gradient animate-gradient-pan pr-[0.06em] font-light' : undefined}
                 />
               </span>
