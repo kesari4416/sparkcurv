@@ -104,7 +104,7 @@ const sitera: Product = {
   },
   brand: '#F59E0B',
   onBrand: '#0F172A',
-  logo: { src: '/images/products/sitera-logo.svg', width: 251, height: 64 },
+  logo: { src: '/images/productlogo/sitera-logo.webp', width: 512, height: 512 },
   mark: { src: '/images/products/sitera-mark.svg', width: 64, height: 64 },
   links: { signIn: { label: 'Sign in at sitera.in', href: 'https://sitera.in' } },
   platforms: [
