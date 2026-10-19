@@ -312,12 +312,15 @@ export const marqueeWords = [
   'Python',
 ]
 
-/** Partners strip (the live home page's "We're Working With"). Logos in public/images/partners. */
+/**
+ * Partners strip (the live home page's "We're Working With"). Logos in public/images/partners.
+ * `tile` is for a logo drawn on its own coloured background: the tile takes that colour.
+ */
 export const partners = [
-  { name: 'GeekyAnts', logo: '/images/partners/geekyants.webp' },
+  { name: 'SA Renew', logo: '/images/partners/sa-renew.webp', tile: '#071813' },
   { name: 'Softean', logo: '/images/partners/softean.webp' },
   { name: 'Resonacle', logo: '/images/partners/resonacle.webp' },
   { name: 'Kallardo', logo: '/images/partners/kallardo.webp' },
-  { name: 'Linuxoft', logo: '/images/partners/linuxoft.webp' },
+  { name: 'RRB Construction', logo: '/images/partners/rrb-construction.webp' },
   { name: 'DevDukes', logo: '/images/partners/devdukes.webp' },
 ];

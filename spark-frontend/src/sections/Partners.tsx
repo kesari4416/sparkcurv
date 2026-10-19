@@ -9,7 +9,8 @@ import { ease } from '@/lib/tokens';
 /**
  * "We're working with": the partner logos on identical light tiles. The logos come with
  * white or transparent backgrounds, so they are multiplied into the tile colour, which
- * makes all six sit the same way in both the dark and light schemes.
+ * makes all six sit the same way in both the dark and light schemes. A logo drawn on its
+ * own background colour gets a tile in that colour instead.
  */
 export function Partners() {
   const ref = useRef<HTMLElement>(null);
@@ -40,7 +41,8 @@ export function Partners() {
               initial={{ opacity: 0, y: 20 }}
               animate={inView ? { opacity: 1, y: 0 } : undefined}
               transition={{ duration: 0.8, ease: ease.out, delay: 0.1 + i * 0.06 }}
-              className="grid h-20 place-items-center rounded-2xl border bg-[#F4F2ED] px-5 md:h-24"
+              className={`grid h-20 place-items-center rounded-2xl border md:h-24 ${'tile' in p ? 'px-2.5' : 'bg-[#F4F2ED] px-5'}`}
+              style={'tile' in p ? { background: p.tile } : undefined}
             >
               <Image
                 src={p.logo}
@@ -48,7 +50,8 @@ export function Partners() {
                 width={400}
                 height={88}
                 sizes="(min-width: 1024px) 12vw, (min-width: 640px) 28vw, 42vw"
-                className="max-h-9 w-auto object-contain mix-blend-multiply md:max-h-10"
+                // A logo on its own coloured tile runs edge to edge (wide wordmarks stay legible).
+                className={'tile' in p ? 'h-auto w-full object-contain' : 'max-h-9 w-auto object-contain mix-blend-multiply md:max-h-10'}
               />
             </motion.li>
           ))}
