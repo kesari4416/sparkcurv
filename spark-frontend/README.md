@@ -70,8 +70,7 @@ plain stacked list on touch screens.
 
 - three.js loads in its own chunk (`next/dynamic`, no SSR), only on devices that render it, and
   only after the visitor's first interaction; the canvas stops rendering when the hero is off screen.
-- Below-the-fold sections use `content-visibility: auto`; analytics loads when idle and the chat
-  widget on first interaction (`components/DeferredChat.tsx`).
+- Below-the-fold sections use `content-visibility: auto`; analytics loads when idle.
 - Videos use `preload="none"` and posters, and only the visible one plays.
 - Pointer-driven effects read one shared listener (`lib/pointer.ts`) inside rAF loops; mouse
   movement causes no React re-renders.

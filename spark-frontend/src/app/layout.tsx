@@ -3,7 +3,6 @@ import Script from 'next/script';
 import localFont from 'next/font/local';
 import { Geist_Mono, Inter, Manrope } from 'next/font/google';
 import { palette } from '@/lib/tokens';
-import { DeferredChat } from '@/components/DeferredChat';
 import { themeBootScript } from '@/lib/theme';
 import './globals.css';
 
@@ -69,9 +68,6 @@ function gtag(){dataLayer.push(arguments);}
 gtag('js', new Date());
 gtag('config', '${GA_ID}');`}
         </Script>
-
-        {/* Tawk.to live chat: injected on first interaction (see DeferredChat). */}
-        <DeferredChat />
       </body>
     </html>
   );
