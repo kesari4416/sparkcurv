@@ -3,12 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useId, useRef, useState } from 'react';
-import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, useTransform } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 import { useUI } from '@/lib/store';
 import { ease } from '@/lib/tokens';
 import { nav, site, socials } from '@/lib/content';
 import { cn } from '@/lib/cn';
-import { useClock } from '@/hooks/useClock';
 import { Wordmark } from './Wordmark';
 import { ScrambleText } from './ScrambleText';
 import { CTAButton } from './CTAButton';
@@ -23,7 +22,6 @@ const DESKTOP = '(min-width: 1280px)'; // Tailwind xl
 
 export function HomeHeader() {
   const introDone = useUI((s) => s.introDone);
-  const time = useClock(site.timeZone);
   const pathname = usePathname();
   const reduce = useReducedMotion();
   const menuId = useId();
@@ -51,13 +49,6 @@ export function HomeHeader() {
   // Readability scrim: fades in once content starts scrolling under the header.
   const { scrollY } = useScroll();
   const scrim = useTransform(scrollY, [0, 160], [0, 1]);
-
-  // The sticky CTA: once the hero (with its own button) is behind us, a compact
-  // "Start a project" pill takes the clock's place in the header. Living in the header,
-  // it can never overlap page content or the chat widget. React skips the re-render
-  // when the boolean doesn't change, so this only updates when crossing the threshold.
-  const [pastHero, setPastHero] = useState(false);
-  useMotionValueEvent(scrollY, 'change', (y) => setPastHero(y > window.innerHeight * 0.75));
 
   const toggle = () => {
     if (open) return close();
@@ -200,28 +191,9 @@ export function HomeHeader() {
           </nav>
 
           <div className="flex items-center gap-5">
-            <div className="relative flex items-center">
-              <p
-                className={cn(
-                  'hidden whitespace-nowrap font-mono text-eyebrow uppercase text-bone/70 transition-[opacity,transform] duration-500 ease-expo-out sm:block',
-                  pastHero && 'xl:pointer-events-none xl:-translate-y-2 xl:opacity-0',
-                )}
-              >
-                <span className="sr-only">Local time in India: </span>
-                {site.timeZoneLabel}{' '}
-                <time className="tabular inline-block min-w-[8ch] text-bone" suppressHydrationWarning>
-                  {time || '--:--:--'}
-                </time>
-              </p>
-              <div
-                inert={!pastHero}
-                className={cn(
-                  'absolute right-0 top-1/2 hidden transition-[opacity,transform] duration-500 ease-expo-out xl:block',
-                  pastHero ? '-translate-y-1/2 opacity-100' : 'pointer-events-none -translate-y-[30%] opacity-0',
-                )}
-              >
-                <CTAButton size="sm" />
-              </div>
+            {/* Always visible from small tablets up; phones don't have room beside the Menu button. */}
+            <div className="hidden sm:block">
+              <CTAButton size="sm" />
             </div>
 
             <ThemeToggle className="glass h-11 w-11 xl:hidden" />
@@ -256,7 +228,7 @@ export function HomeHeader() {
       </motion.header>
 
       <AnimatePresence>
-        {open && menu && <MenuPanel key="menu" ref={panelRef} id={menuId} menu={menu} reduce={!!reduce} pathname={pathname} time={time} onNavigate={close} />}
+        {open && menu && <MenuPanel key="menu" ref={panelRef} id={menuId} menu={menu} reduce={!!reduce} pathname={pathname} onNavigate={close} />}
       </AnimatePresence>
     </>
   );
@@ -267,7 +239,6 @@ type MenuPanelProps = {
   menu: MenuState;
   reduce: boolean;
   pathname: string;
-  time: string;
   onNavigate: () => void;
   ref: React.Ref<HTMLDivElement>;
 };
@@ -277,7 +248,7 @@ type MenuPanelProps = {
  * (clip-path, so no layout or paint of the page underneath), then the links rise into
  * place one after another, followed by the socials and contact row.
  */
-function MenuPanel({ id, menu, reduce, pathname, time, onNavigate, ref }: MenuPanelProps) {
+function MenuPanel({ id, menu, reduce, pathname, onNavigate, ref }: MenuPanelProps) {
   const at = `at ${menu.x}px ${menu.y}px`;
   const rise = (delay: number) => ({
     initial: reduce ? false : { y: '110%' },
@@ -351,11 +322,6 @@ function MenuPanel({ id, menu, reduce, pathname, time, onNavigate, ref }: MenuPa
           <a href={`mailto:${site.email}`} className="text-lg text-bone transition-colors hover:text-bone-muted">
             {site.email}
           </a>
-          <p className="font-mono text-eyebrow uppercase text-bone-muted">
-            <span className="sr-only">Local time in India: </span>
-            {site.timeZoneLabel}{' '}
-            <time className="tabular inline-block min-w-[8ch] text-bone">{time || '--:--:--'}</time>
-          </p>
         </div>
       </motion.div>
     </motion.div>
