@@ -12,14 +12,6 @@ export const site = {
   /** Footer line from the live site. */
   tagline:
     'Turning ideas into digital brilliance. We craft sleek apps, stunning websites, and smart tech solutions to power your success.',
-  /**
-   * The live site's floating WhatsApp button. NOTE: it opens +91 90437 65028, while the
-   * phone shown everywhere else is +91 96774 95028. Confirm which is right.
-   */
-  whatsapp: {
-    number: '919043765028',
-    message: 'Hello SparkCurv! I would like to know more about your services.',
-  },
   timeZone: 'Asia/Kolkata',
   timeZoneLabel: 'IST',
   description:
@@ -269,7 +261,7 @@ export const faqs = [
   },
   {
     q: 'How can I get a quote for my project?',
-    a: 'Simply visit our Contact page or click the WhatsApp button to reach out. Share your project requirements and our team will provide a detailed proposal within 24-48 hours. We offer free initial consultations to understand your needs.',
+    a: 'Simply visit our Contact page to reach out. Share your project requirements and our team will provide a detailed proposal within 24-48 hours. We offer free initial consultations to understand your needs.',
   },
   {
     q: 'Do you work with startups and enterprises?',

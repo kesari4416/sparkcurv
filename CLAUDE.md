@@ -32,6 +32,7 @@ There are two copies of this repo. Check which one you are editing.
   - end the message with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`;
   - there is no remote; never push unless asked.
 - **Don't name CSR Interiors** (a product customer) anywhere public.
+- **No floating WhatsApp button**; the user had it removed.
 - **No AI-slop styling.** Use icons sparingly and avoid decorative tag rows. The user rejected greyscale-until-hover photos and a custom cursor; the site uses the normal system cursor.
 - **The user keeps a docs folder.** Daily notes go in `C:\Users\Dharun\Documentation\YYYY-MM-DD.md` (see the global CLAUDE.md). Don't update the Google Sheets unless asked.
 
@@ -122,7 +123,6 @@ Other content notes:
 
 ## Open items waiting on the user
 
-- **WhatsApp number:** the button uses 90437 65028 but the site phone is +91 96774 95028. Which is right?
 - **Projects and years:** the live site says both 30+ and 27+ projects, and both 2+ and 5+ years. 30+ is used; years are left out.
 - **Assets:** a real CloudWatch logo (the old file was an HTML error page); real product screenshots with demo data.
 - **Partner label:** "SA Renew" vs "SA Construction".
