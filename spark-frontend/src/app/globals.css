@@ -141,25 +141,6 @@
     border: 4px solid var(--brand);
   }
 
-  /* Article body: Tailwind Typography colours from the scheme variables. */
-  .prose-scheme {
-    --tw-prose-body: rgb(var(--bone) / 0.82);
-    --tw-prose-headings: rgb(var(--bone));
-    --tw-prose-lead: rgb(var(--bone-muted));
-    --tw-prose-links: theme('colors.spark.blue');
-    --tw-prose-bold: rgb(var(--bone));
-    --tw-prose-counters: rgb(var(--bone-muted));
-    --tw-prose-bullets: rgb(var(--bone-faint));
-    --tw-prose-hr: var(--hairline);
-    --tw-prose-quotes: rgb(var(--bone) / 0.82);
-    --tw-prose-quote-borders: theme('colors.spark.blue');
-    --tw-prose-captions: rgb(var(--bone-muted));
-    --tw-prose-code: rgb(var(--bone));
-    --tw-prose-pre-code: rgb(var(--bone));
-    --tw-prose-pre-bg: rgb(var(--ink-800));
-    --tw-prose-th-borders: var(--hairline);
-    --tw-prose-td-borders: var(--hairline);
-  }
 
   /* ----- Legacy pages ----- */
   .theme-legacy {
@@ -206,6 +187,27 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+}
+
+/* Article body: Tailwind Typography colours from the scheme variables. Kept outside
+ @layer so it overrides the plugin's own .prose colours (components layer). */
+.prose-scheme {
+  --tw-prose-body: rgb(var(--bone) / 0.82);
+  --tw-prose-headings: rgb(var(--bone));
+  --tw-prose-lead: rgb(var(--bone-muted));
+  --tw-prose-links: theme('colors.spark.blue');
+  --tw-prose-bold: rgb(var(--bone));
+  --tw-prose-counters: rgb(var(--bone-muted));
+  --tw-prose-bullets: rgb(var(--bone-faint));
+  --tw-prose-hr: var(--hairline);
+  --tw-prose-quotes: rgb(var(--bone) / 0.82);
+  --tw-prose-quote-borders: theme('colors.spark.blue');
+  --tw-prose-captions: rgb(var(--bone-muted));
+  --tw-prose-code: rgb(var(--bone));
+  --tw-prose-pre-code: rgb(var(--bone));
+  --tw-prose-pre-bg: rgb(var(--ink-800));
+  --tw-prose-th-borders: var(--hairline);
+  --tw-prose-td-borders: var(--hairline);
 }
 
 /*

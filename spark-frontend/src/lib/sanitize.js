@@ -1,6 +1,6 @@
 import DOMPurify from 'dompurify';
 
-// Blog HTML is written by admins in RichTextEditor. The backend sanitizes it too
+// Blog posts are written in Markdown and rendered to HTML by the backend, which sanitizes it too
 // (nh3 in server.py); this is the second layer for anything rendered as HTML.
 // "/path" is allowed, but not "//host" or "/\host" (browsers treat both as another site).
 const ALLOWED_URI = /^(?:https?:|mailto:|tel:|\/(?![/\\])|#)/i;

@@ -19,7 +19,7 @@ yarn lint         # eslint (next/core-web-vitals + typescript)
 | `src/app/(site)/` | Every other public page: about, pricing, contact, blog, thank-you and the service pages, all on the same shell |
 | `src/app/admin/` | Admin panel, still on the original light theme (session context in `components/AdminShell.jsx`, pages in `src/views/Admin*`) |
 | `src/sections/` | Home sections (`Preloader`, `Hero` + `hero/`, `MarqueeBand`, `FeatureBento`, `PinnedStory`, `Stats`, `Industries`, `WhyUs`, `Testimonials`, `FAQ`, `CTASlab`, `Footer`) and inner-page sections: `page/` (hero, status screens), `service/` (service page template), `pricing/`, `about/`, `contact/`, `blog/` |
-| `src/components/` | Shared UI: `SiteFrame`, `HomeHeader`, `SectionIntro`, `Magnetic`, `RevealText`, `ScrambleText`, `SmoothScroll`, `Grain`, `AccentField`, `CTAButton`, `DeferredChat`, `ThemeMarker`. Admin only: `AdminShell`, `ErrorBoundary`, `RichTextEditor` |
+| `src/components/` | Shared UI: `SiteFrame`, `HomeHeader`, `SectionIntro`, `Magnetic`, `RevealText`, `ScrambleText`, `SmoothScroll`, `Grain`, `AccentField`, `CTAButton`, `DeferredChat`, `ThemeMarker`. Admin only: `AdminShell`, `ErrorBoundary`, `MarkdownEditor` (blog posts are written in Markdown; `lib/markdownPost.js` handles .md import, export and the template) |
 | `src/hooks/` | `useClock`, `useScramble`, `useRenderMode` (WebGL vs fallback), `useMediaQuery` |
 | `src/lib/` | `tokens.ts` (design tokens), `content.ts` (home copy), `services.ts` (every service page), `pages.ts` (about, pricing), `store.ts` (Zustand UI state), `pointer.ts`, `device.ts`, `theme.ts`, `api.js`, `sanitize.js`, `router.jsx` (react-router shim, used by the admin views only) |
 

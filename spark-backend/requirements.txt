@@ -12,3 +12,4 @@ python-dotenv==1.2.4
 python-multipart==0.0.32
 fpdf2==2.8.9
 nh3==0.3.0
+markdown-it-py==4.0.0

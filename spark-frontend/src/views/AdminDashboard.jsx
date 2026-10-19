@@ -3,24 +3,28 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from '@/lib/router';
 import { useAuth } from '../context/AuthContext';
-import { api, assetUrl, errorMessage, BACKEND_URL } from '../lib/api';
+import { api, assetUrl, errorMessage } from '../lib/api';
 import { sanitizeHtml } from '../lib/sanitize';
 import {
   PlusCircle, Pencil, Trash2, LogOut, Eye, EyeOff,
   CheckCircle, XCircle, BookOpen, ChevronRight, X, Save,
   AlertCircle, Search, Mail, Phone, MessageSquare,
   Tag, Globe, Upload, ImageIcon, User, Calendar,
-  Images, Users, UserPlus, Copy, Check, Shield, Download, KeyRound
+  Images, Users, UserPlus, Copy, Check, Shield, Download, KeyRound, FileUp, ChevronDown
 } from 'lucide-react';
-import RichTextEditor, { imageFileError, uploadImage } from '../components/RichTextEditor';
+import MarkdownEditor, { PREVIEW_PROSE, useMarkdownPreview } from '../components/MarkdownEditor';
+import { imageFileError, uploadImage } from '../lib/images';
+import { downloadMarkdown, fileToPost, postToFile, TEMPLATE_MD } from '../lib/markdownPost';
 
 const CATEGORIES = ['Technology', 'AI & Technology', 'DevOps', 'Mobile Development', 'Web Development', 'Cloud', 'Digital Marketing', 'Business'];
 
 const emptyForm = {
-  title: '', slug: '', excerpt: '', content: '',
+  title: '', slug: '', excerpt: '', content_md: '',
   image_url: '', author: 'SparkCurv Team', category: 'Technology',
   tags: [], published: true, meta_title: '', meta_description: ''
 };
+
+const sideHeading = 'text-xs font-semibold uppercase tracking-wider text-gray-500';
 
 const inputCls = "w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#02028B]/30 focus:border-[#02028B] transition-all";
 
@@ -187,6 +191,7 @@ const TagInput = ({ value, onChange }) => {
 // ── Blog Preview Modal ────────────────────────────────────────────────────────
 
 const BlogPreviewModal = ({ form, onClose }) => {
+  const preview = useMarkdownPreview(form.content_md, { delay: 0 });
   const formatDate = (d) => new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   return (
     <div data-testid="blog-preview-modal" className="fixed inset-0 z-[60] bg-black/60 flex flex-col overflow-hidden">
@@ -227,18 +232,12 @@ const BlogPreviewModal = ({ form, onClose }) => {
               <img src={assetUrl(form.image_url)} alt={form.title} className="w-full h-[400px] object-cover" onError={e => { e.target.style.display = 'none'; }} />
             </div>
           )}
-          {form.excerpt && <p className="text-lg text-gray-500 leading-relaxed mb-8 italic border-l-4 border-[#02028B]/20 pl-4">{form.excerpt}</p>}
-          {form.content
-            ? <div className="text-gray-600 leading-relaxed prose prose-lg max-w-none
-                [&_h1]:text-3xl [&_h1]:font-bold [&_h1]:text-gray-900 [&_h1]:mb-4
-                [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:text-gray-900 [&_h2]:mb-3
-                [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-gray-900 [&_h3]:mb-2
-                [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:mb-4
-                [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:mb-4
-                [&_blockquote]:border-l-4 [&_blockquote]:border-[#02028B]/30 [&_blockquote]:pl-5 [&_blockquote]:italic [&_blockquote]:text-gray-500
-                [&_a]:text-[#02028B] [&_a]:underline [&_img]:max-w-full [&_img]:rounded-lg [&_img]:my-4"
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(form.content) }} />
-            : <p className="text-gray-300 text-lg italic">Content will appear here...</p>
+          {form.excerpt && <p className="text-lg text-gray-500 leading-relaxed mb-8">{form.excerpt}</p>}
+          {!form.content_md.trim()
+            ? <p className="text-gray-300 text-lg italic">Content will appear here...</p>
+            : preview.error
+              ? <p className="text-sm text-red-600">{preview.error}</p>
+              : <div className={`${PREVIEW_PROSE} prose-lg`} dangerouslySetInnerHTML={{ __html: sanitizeHtml(preview.html) }} />
           }
         </div>
       </div>
@@ -248,7 +247,7 @@ const BlogPreviewModal = ({ form, onClose }) => {
 
 // ── Image Gallery Modal ────────────────────────────────────────────────────────
 
-// Picker used by the cover uploader and the rich text editor. onSelect receives
+// Picker used by the cover uploader and the Markdown editor. onSelect receives
 // the relative "/api/images/<id>" url.
 const ImageGalleryModal = ({ onSelect, onClose }) => {
   const [images, setImages] = useState([]);
@@ -433,7 +432,11 @@ const AdminDashboard = () => {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [editorError, setEditorError] = useState('');
+  const [legacyHtml, setLegacyHtml] = useState(false);
+  const [seoOpen, setSeoOpen] = useState(false);
+  const editorFormRef = useRef(null);
   const editorErrorRef = useRef(null);
+  const importRef = useRef(null);
 
   // Gallery modal
   const [galleryCallback, setGalleryCallback] = useState(null);
@@ -524,30 +527,49 @@ const AdminDashboard = () => {
 
   const handleLogout = async () => { await logout(); navigate('/admin/login'); };
 
-  const startEditing = (initial, id) => {
+  const startEditing = (initial, id, legacy = false) => {
     setForm(initial); setInitialForm(initial);
-    setEditingId(id); setEditorError(''); setShowEditor(true);
+    setEditingId(id); setEditorError(''); setLegacyHtml(legacy);
+    setSeoOpen(Boolean(initial.meta_title || initial.meta_description));
+    setShowEditor(true);
   };
+
+  const editorDirty = showEditor && JSON.stringify(form) !== JSON.stringify(initialForm);
+  const slugPreview = form.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+
+  // While the editor is open: Ctrl/Cmd+S saves, and the page behind it doesn't scroll.
+  useEffect(() => {
+    if (!showEditor) return undefined;
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        editorFormRef.current?.requestSubmit();
+      }
+    };
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = prev; };
+  }, [showEditor]);
 
   const openCreate = () => startEditing(emptyForm, null);
 
   const openEdit = (blog) => startEditing({
     title: blog.title, slug: blog.slug, excerpt: blog.excerpt,
-    content: blog.content, image_url: blog.image_url || '',
+    content_md: blog.content_md ?? blog.content ?? '', image_url: blog.image_url || '',
     author: blog.author, category: blog.category,
     tags: blog.tags || [], published: blog.published,
     meta_title: blog.meta_title || '', meta_description: blog.meta_description || ''
-  }, blog.id);
+  }, blog.id, blog.content_md == null && Boolean(blog.content));
 
   const closeEditor = () => {
-    const dirty = JSON.stringify(form) !== JSON.stringify(initialForm);
-    if (dirty && !window.confirm('Discard your unsaved changes?')) return;
+    if (editorDirty && !window.confirm('Discard your unsaved changes?')) return;
     setShowEditor(false);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!form.title.trim() || !form.excerpt.trim() || !form.content.trim()) { setEditorError('Title, excerpt, and content are required.'); return; }
+    if (!form.title.trim() || !form.excerpt.trim() || !form.content_md.trim()) { setEditorError('Title, excerpt, and content are required.'); return; }
     // A blank slug is omitted: the server generates one on create and keeps the existing one on update.
     const payload = { ...form, slug: form.slug.trim() };
     if (!payload.slug) delete payload.slug;
@@ -563,6 +585,23 @@ const AdminDashboard = () => {
       setShowEditor(false); fetchBlogs();
     } catch (err) { setEditorError(errorMessage(err, 'Failed to save blog')); }
     finally { setSaving(false); }
+  };
+
+  // Import a Markdown file (front matter fills the fields it names; see lib/markdownPost).
+  const handleImport = async (file) => {
+    if (!file) return;
+    if (file.size > 2_000_000) { setEditorError('That file is over 2 MB.'); return; }
+    const post = fileToPost(await file.text());
+    if (form.content_md.trim() && !window.confirm('Replace the current content with this file?')) return;
+    setForm(f => ({ ...f, ...post, tags: post.tags ?? f.tags }));
+    setLegacyHtml(false);
+    setEditorError('');
+    showToast(`Imported ${file.name}`);
+  };
+
+  const handleExport = () => {
+    const name = (form.slug || form.title || 'post').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'post';
+    downloadMarkdown(`${name}.md`, postToFile(form));
   };
 
   const handleDelete = async (id) => {
@@ -636,15 +675,15 @@ const AdminDashboard = () => {
             <a href="/blog" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#02028B] transition-colors">
               <BookOpen className="w-4 h-4" /><span className="hidden sm:inline">View Blog</span>
             </a>
-            <a
-              href={`${BACKEND_URL}/api/blog-template/pdf`}
-              download="sparkcurv-blog-template.pdf"
+            <button
+              type="button"
+              onClick={() => downloadMarkdown('sparkcurv-blog-template.md', TEMPLATE_MD)}
               data-testid="download-template-btn"
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-[#02028B] transition-colors"
-              title="Download Blog Template PDF"
+              title="Download a Markdown template: write the post anywhere, then use Import .md"
             >
               <Download className="w-4 h-4" /><span className="hidden sm:inline">Template</span>
-            </a>
+            </button>
             <span className="text-sm text-gray-500 hidden sm:block">{admin?.email}</span>
             <button data-testid="logout-btn" onClick={handleLogout} className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 transition-colors">
               <LogOut className="w-4 h-4" /><span className="hidden sm:inline">Logout</span>
@@ -960,124 +999,173 @@ const AdminDashboard = () => {
         )}
       </main>
 
-      {/* ── BLOG EDITOR MODAL ── */}
+      {/* ── BLOG EDITOR (full screen: writing on the left, post settings on the right) ── */}
       {showEditor && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center overflow-y-auto py-8 px-4">
-          <div data-testid="blog-editor-modal" className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl my-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="text-base font-semibold text-gray-900">{editingId ? 'Edit Blog Post' : 'New Blog Post'}</h2>
-              <button type="button" onClick={closeEditor} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"><X className="w-5 h-5" /></button>
+        <div data-testid="blog-editor-modal" role="dialog" aria-modal="true" aria-labelledby="blog-editor-title"
+          className="fixed inset-0 z-50 flex flex-col bg-gray-50">
+          {/* Top bar */}
+          <div className="flex h-14 flex-shrink-0 items-center justify-between gap-3 border-b border-gray-200 bg-white px-3 sm:px-6">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <button type="button" onClick={closeEditor} aria-label="Close editor"
+                className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700">
+                <X className="h-5 w-5" />
+              </button>
+              <h2 id="blog-editor-title" className="truncate text-sm font-semibold text-gray-900">{editingId ? 'Edit post' : 'New post'}</h2>
+              <span className={`hidden rounded-full px-2 py-0.5 text-xs font-medium sm:inline-flex ${form.published ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                {form.published ? 'Published' : 'Draft'}
+              </span>
+              {editorDirty && <span className="hidden text-xs text-amber-600 md:inline">Unsaved changes</span>}
             </div>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <button type="button" onClick={() => importRef.current?.click()} data-testid="import-md-btn" title="Import a Markdown file"
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900">
+                <FileUp className="h-4 w-4" /><span className="hidden md:inline">Import .md</span>
+              </button>
+              <input ref={importRef} type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" className="hidden"
+                data-testid="import-md-input" onChange={e => { handleImport(e.target.files[0]); e.target.value = ''; }} />
+              <button type="button" onClick={handleExport} data-testid="export-md-btn" title="Download this post as Markdown"
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900">
+                <Download className="h-4 w-4" /><span className="hidden md:inline">Download .md</span>
+              </button>
+              <button type="button" onClick={() => setShowPreview(true)} data-testid="preview-blog-btn"
+                className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
+                <Eye className="h-4 w-4" /><span className="hidden sm:inline">Preview</span>
+              </button>
+              <button data-testid="save-blog-btn" type="submit" form="blog-editor-form" disabled={saving} title="Save (Ctrl+S)"
+                className="flex items-center gap-2 rounded-lg bg-[#02028B] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#0303b5] disabled:bg-gray-300">
+                {saving
+                  ? <><div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />Saving…</>
+                  : <><Save className="h-4 w-4" />{editingId ? 'Update' : form.published ? 'Publish' : 'Save draft'}</>}
+              </button>
+            </div>
+          </div>
 
-            <form onSubmit={handleSave} className="p-6 space-y-6">
+          <form id="blog-editor-form" ref={editorFormRef} onSubmit={handleSave}
+            className="min-h-0 flex-1 overflow-y-auto lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:overflow-hidden">
+            {/* Writing */}
+            <div className="flex min-h-0 flex-col gap-5 p-4 sm:p-6 lg:overflow-y-auto">
               {editorError && (
-                <div ref={editorErrorRef} data-testid="editor-error" className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-lg px-4 py-3 text-sm">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />{editorError}
+                <div ref={editorErrorRef} data-testid="editor-error" role="alert" className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />{editorError}
                 </div>
               )}
-
-              {/* Post Details */}
-              <div className="space-y-4">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Post Details</p>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Title <span className="text-red-500">*</span></label>
-                    <input data-testid="blog-title-input" type="text" value={form.title}
-                      onChange={e => setForm(f => ({ ...f, title: e.target.value }))} required
-                      placeholder="Enter blog post title" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">URL Slug</label>
-                    <input data-testid="blog-slug-input" type="text" value={form.slug}
-                      onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
-                      placeholder="auto-generated-from-title" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Category</label>
-                    <select data-testid="blog-category-select" value={form.category}
-                      onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                      className={inputCls + ' bg-white'}>
-                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Author</label>
-                    <input data-testid="blog-author-input" type="text" value={form.author}
-                      onChange={e => setForm(f => ({ ...f, author: e.target.value }))}
-                      placeholder="SparkCurv Team" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Cover Image</label>
-                    <CoverImageUploader value={form.image_url} onChange={url => setForm(f => ({ ...f, image_url: url }))}
-                      onOpenGallery={(cb) => setGalleryCallback(() => cb)} />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Tags</label>
-                    <TagInput value={form.tags} onChange={tags => setForm(f => ({ ...f, tags }))} />
-                    <p className="text-xs text-gray-400 mt-1">Press Enter or comma to add each tag</p>
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Excerpt <span className="text-red-500">*</span></label>
-                    <textarea data-testid="blog-excerpt-input" value={form.excerpt}
-                      onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))} required rows={2}
-                      placeholder="Brief summary shown in blog listing..." className={inputCls + ' resize-none'} />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Content <span className="text-red-500">*</span></label>
-                    <RichTextEditor value={form.content} onChange={content => setForm(f => ({ ...f, content }))}
-                      placeholder="Write your blog content here..."
-                      onOpenGallery={(insertFn) => setGalleryCallback(() => insertFn)} />
-                  </div>
-                </div>
+              <div>
+                <label htmlFor="blog-title" className="sr-only">Title</label>
+                <input id="blog-title" data-testid="blog-title-input" type="text" value={form.title} required maxLength={500}
+                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="Post title"
+                  className="w-full border-0 bg-transparent px-0 text-2xl font-semibold tracking-tight text-gray-900 placeholder:text-gray-300 focus:outline-none sm:text-3xl" />
               </div>
-
-              {/* SEO */}
-              <div className="space-y-4 pt-2 border-t border-dashed border-gray-200">
-                <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-orange-500" />
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">SEO Settings</p>
-                  <span className="text-xs text-gray-400">(optional)</span>
-                </div>
-                <div className="grid sm:grid-cols-1 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Meta Title</label>
-                    <input data-testid="blog-meta-title-input" type="text" value={form.meta_title}
-                      onChange={e => setForm(f => ({ ...f, meta_title: e.target.value }))} maxLength={60}
-                      placeholder="SEO title (max 60 chars)" className={inputCls} />
-                    <p className="text-xs text-gray-400 mt-1">{form.meta_title.length}/60 characters</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Meta Description</label>
-                    <textarea data-testid="blog-meta-desc-input" value={form.meta_description}
-                      onChange={e => setForm(f => ({ ...f, meta_description: e.target.value }))} maxLength={160} rows={2}
-                      placeholder="SEO description (max 160 chars)" className={inputCls + ' resize-none'} />
-                    <p className="text-xs text-gray-400 mt-1">{form.meta_description.length}/160 characters</p>
-                  </div>
-                </div>
+              <div>
+                <label htmlFor="blog-excerpt" className="mb-1.5 flex items-baseline justify-between text-sm font-medium text-gray-700">
+                  <span>Excerpt <span className="text-red-500">*</span></span>
+                  <span className="text-xs font-normal text-gray-400">Shown on the blog listing</span>
+                </label>
+                <textarea id="blog-excerpt" data-testid="blog-excerpt-input" value={form.excerpt} required rows={2} maxLength={2000}
+                  onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))}
+                  placeholder="Two or three sentences that tell readers what they'll get from the post."
+                  className={inputCls + ' resize-none bg-white'} />
               </div>
+              <MarkdownEditor
+                value={form.content_md}
+                onChange={content_md => setForm(f => ({ ...f, content_md }))}
+                onOpenGallery={(insertFn) => setGalleryCallback(() => insertFn)}
+                notice={legacyHtml ? 'This post was written in the old editor, so its content is HTML. It still renders as before; you can replace it with Markdown at any time.' : null}
+                className="h-[75vh] lg:h-auto lg:min-h-[28rem] lg:flex-1" />
+            </div>
 
-              {/* Footer */}
-              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                <label className="flex items-center gap-2.5 cursor-pointer">
+            {/* Settings */}
+            <aside aria-label="Post settings" className="space-y-7 border-t border-gray-200 bg-white p-4 sm:p-6 lg:overflow-y-auto lg:border-l lg:border-t-0">
+              <section>
+                <h3 className={sideHeading}>Status</h3>
+                <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-gray-200 px-3 py-2.5 transition-colors hover:bg-gray-50">
+                  <span>
+                    <span className="block text-sm font-medium text-gray-800">Published</span>
+                    <span className="block text-xs text-gray-500">{form.published ? 'Visible on the blog' : 'Saved as a draft, not visible'}</span>
+                  </span>
                   <input data-testid="blog-published-checkbox" type="checkbox" checked={form.published}
                     onChange={e => setForm(f => ({ ...f, published: e.target.checked }))}
-                    className="w-4 h-4 rounded border-gray-300 text-[#02028B] focus:ring-[#02028B]" />
-                  <span className="text-sm font-medium text-gray-700">Publish immediately</span>
+                    className="h-4 w-4 rounded border-gray-300 text-[#02028B] focus:ring-[#02028B]" />
                 </label>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => setShowPreview(true)} data-testid="preview-blog-btn"
-                    className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                    <Eye className="w-4 h-4" />Preview
-                  </button>
-                  <button type="button" onClick={closeEditor} className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">Cancel</button>
-                  <button data-testid="save-blog-btn" type="submit" disabled={saving}
-                    className="flex items-center gap-2 bg-[#02028B] hover:bg-[#0303b5] disabled:bg-gray-300 text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors">
-                    {saving ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Saving...</> : <><Save className="w-4 h-4" />{editingId ? 'Update Post' : 'Create Post'}</>}
-                  </button>
+              </section>
+
+              <section>
+                <h3 className={sideHeading}>Cover image</h3>
+                <div className="mt-3">
+                  <CoverImageUploader value={form.image_url} onChange={url => setForm(f => ({ ...f, image_url: url }))}
+                    onOpenGallery={(cb) => setGalleryCallback(() => cb)} />
                 </div>
-              </div>
-            </form>
-          </div>
+              </section>
+
+              <section className="space-y-4">
+                <h3 className={sideHeading}>Details</h3>
+                <div>
+                  <label htmlFor="blog-category" className="mb-1.5 block text-sm font-medium text-gray-700">Category</label>
+                  <select id="blog-category" data-testid="blog-category-select" value={form.category}
+                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                    className={inputCls + ' bg-white'}>
+                    {[...new Set([...CATEGORIES, form.category].filter(Boolean))].map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="blog-author" className="mb-1.5 block text-sm font-medium text-gray-700">Author</label>
+                  <input id="blog-author" data-testid="blog-author-input" type="text" value={form.author} maxLength={255}
+                    onChange={e => setForm(f => ({ ...f, author: e.target.value }))}
+                    placeholder="SparkCurv Team" className={inputCls} />
+                </div>
+                <div>
+                  <label htmlFor="blog-slug" className="mb-1.5 block text-sm font-medium text-gray-700">URL</label>
+                  <div className="flex items-center rounded-lg border border-gray-200 focus-within:border-[#02028B] focus-within:ring-2 focus-within:ring-[#02028B]/30">
+                    <span className="pl-3 text-sm text-gray-400">/blog/</span>
+                    <input id="blog-slug" data-testid="blog-slug-input" type="text" value={form.slug} maxLength={200}
+                      onChange={e => setForm(f => ({ ...f, slug: e.target.value }))}
+                      placeholder={slugPreview || 'from-the-title'}
+                      className="w-full min-w-0 rounded-r-lg border-0 bg-transparent px-1 py-2.5 text-sm focus:outline-none" />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-400">Leave blank to use the title.</p>
+                </div>
+                <div>
+                  <span className="mb-1.5 block text-sm font-medium text-gray-700">Tags</span>
+                  <TagInput value={form.tags} onChange={tags => setForm(f => ({ ...f, tags }))} />
+                  <p className="mt-1 text-xs text-gray-400">Press Enter or comma after each tag.</p>
+                </div>
+              </section>
+
+              <section>
+                <button type="button" onClick={() => setSeoOpen(o => !o)} aria-expanded={seoOpen}
+                  className="flex w-full items-center justify-between text-left">
+                  <span className={sideHeading}>Search engines <span className="font-normal normal-case tracking-normal text-gray-400">(optional)</span></span>
+                  <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${seoOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {seoOpen && (
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <label htmlFor="blog-meta-title" className="mb-1.5 flex justify-between text-sm font-medium text-gray-700">
+                        Meta title <span className="text-xs font-normal text-gray-400">{form.meta_title.length}/60</span>
+                      </label>
+                      <input id="blog-meta-title" data-testid="blog-meta-title-input" type="text" value={form.meta_title} maxLength={60}
+                        onChange={e => setForm(f => ({ ...f, meta_title: e.target.value }))}
+                        placeholder="Defaults to the post title" className={inputCls} />
+                    </div>
+                    <div>
+                      <label htmlFor="blog-meta-desc" className="mb-1.5 flex justify-between text-sm font-medium text-gray-700">
+                        Meta description <span className="text-xs font-normal text-gray-400">{form.meta_description.length}/160</span>
+                      </label>
+                      <textarea id="blog-meta-desc" data-testid="blog-meta-desc-input" value={form.meta_description} maxLength={160} rows={3}
+                        onChange={e => setForm(f => ({ ...f, meta_description: e.target.value }))}
+                        placeholder="Defaults to the excerpt" className={inputCls + ' resize-none'} />
+                    </div>
+                    {/* How the post could look in search results */}
+                    <div className="rounded-lg border border-gray-200 p-3">
+                      <p className="truncate text-xs text-gray-500">sparkcurv.com › blog › {form.slug || slugPreview || '…'}</p>
+                      <p className="mt-1 line-clamp-1 text-base text-[#1a0dab]">{form.meta_title || form.title || 'Post title'}</p>
+                      <p className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-gray-600">{form.meta_description || form.excerpt || 'The description shown under the title.'}</p>
+                    </div>
+                  </div>
+                )}
+              </section>
+            </aside>
+          </form>
         </div>
       )}
 

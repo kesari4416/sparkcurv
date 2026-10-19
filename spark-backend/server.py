@@ -22,8 +22,9 @@ from contextlib import asynccontextmanager
 from types import SimpleNamespace
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 import nh3
+from markdown_it import MarkdownIt
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -169,7 +170,8 @@ _ALLOWED_ATTRS = {
     "span": {"style"}, "p": {"style"}, "div": {"style"}, "li": {"style"},
     "h1": {"style"}, "h2": {"style"}, "h3": {"style"}, "h4": {"style"},
     "font": {"color", "size"},  # legacy execCommand output in existing posts
-    "td": {"colspan", "rowspan"}, "th": {"colspan", "rowspan"},
+    "td": {"colspan", "rowspan", "style"}, "th": {"colspan", "rowspan", "style"},  # style: Markdown table alignment
+    "ol": {"start"},
 }
 
 def sanitize_html(content: str) -> str:
@@ -178,6 +180,15 @@ def sanitize_html(content: str) -> str:
                      filter_style_properties={"color", "background-color", "font-size", "font-weight",
                                               "font-style", "text-align", "text-decoration"},
                      link_rel="noopener noreferrer nofollow")
+
+# Blog posts are written in Markdown (CommonMark plus tables and ~~strikethrough~~) and
+# stored twice: the source in content_md, for editing, and the rendered HTML in content,
+# for readers. Raw HTML inside the Markdown is allowed (old posts were HTML) because the
+# output always goes through sanitize_html; markdown-it itself refuses javascript: links.
+_markdown = MarkdownIt("commonmark", {"html": True}).enable(["table", "strikethrough"])
+
+def render_markdown(source: str) -> str:
+    return sanitize_html(_markdown.render(source or ""))
 
 # Older builds stored uploads as absolute URLs with whatever API host the build had
 # (e.g. http://localhost:8000/api/images/3). Store and serve them as relative paths.
@@ -251,7 +262,9 @@ class BlogCreate(BaseModel):
     title: str = Field(min_length=1, max_length=500)
     slug: Optional[str] = Field(None, max_length=200)
     excerpt: str = Field(max_length=2000)
-    content: str = Field(max_length=2_000_000)
+    # Markdown source (the admin editor). `content` (HTML) is still accepted for older clients.
+    content_md: Optional[str] = Field(None, max_length=2_000_000)
+    content: Optional[str] = Field(None, max_length=2_000_000)
     image_url: Optional[str] = Field("", max_length=2000)
     author: str = Field("SparkCurv Team", max_length=255)
     category: str = Field("Technology", max_length=255)
@@ -263,10 +276,17 @@ class BlogCreate(BaseModel):
     _image = field_validator("image_url")(_validate_image_url)
     _tags = field_validator("tags")(_validate_tags)
 
+    @model_validator(mode="after")
+    def _needs_content(self):
+        if not (self.content_md or "").strip() and not (self.content or "").strip():
+            raise ValueError("content_md is required")
+        return self
+
 class BlogUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     slug: Optional[str] = Field(None, max_length=200)
     excerpt: Optional[str] = Field(None, max_length=2000)
+    content_md: Optional[str] = Field(None, max_length=2_000_000)
     content: Optional[str] = Field(None, max_length=2_000_000)
     image_url: Optional[str] = Field(None, max_length=2000)
     author: Optional[str] = Field(None, max_length=255)
@@ -278,6 +298,9 @@ class BlogUpdate(BaseModel):
 
     _image = field_validator("image_url")(_validate_image_url)
     _tags = field_validator("tags")(_validate_tags)
+
+class MarkdownPreview(BaseModel):
+    markdown: str = Field("", max_length=2_000_000)
 
 class AdminUserCreate(BaseModel):
     email: EmailStr
@@ -354,6 +377,9 @@ def row_to_blog(row: dict) -> dict:
         row["image_url"] = relative_image_urls(row.get("image_url") or "")
         # Also sanitized on read: posts saved before sanitizing existed are still raw in the DB.
         row["content"] = sanitize_html(relative_image_urls(row.get("content") or ""))
+        # NULL for posts written before the Markdown editor; the editor then opens their HTML.
+        if row.get("content_md") is not None:
+            row["content_md"] = relative_image_urls(row["content_md"])
     if row and isinstance(row.get("tags"), str):
         try:
             row["tags"] = json.loads(row["tags"])
@@ -387,6 +413,11 @@ async def get_all_blogs(admin=Depends(get_current_admin)):
         await release(conn)
     return [row_to_blog(dict(r)) for r in rows]
 
+@api_router.post("/blogs/preview")
+async def preview_markdown(data: MarkdownPreview, admin=Depends(get_current_admin)):
+    """Renders Markdown exactly as a saved post would be, for the editor's live preview."""
+    return {"html": render_markdown(relative_image_urls(data.markdown))}
+
 @api_router.get("/blogs/{slug}")
 async def get_blog(slug: str):
     conn = await get_conn()
@@ -411,12 +442,17 @@ async def create_blog(data: BlogCreate, admin=Depends(get_current_admin)):
             await cur.execute("SELECT id FROM blogs WHERE slug=%s", (slug,))
             if await cur.fetchone():
                 slug = f"{slug}-{secrets.token_hex(3)}"
+            if (data.content_md or "").strip():
+                content_md = relative_image_urls(data.content_md)
+                content = render_markdown(content_md)
+            else:  # older clients send HTML
+                content_md, content = None, sanitize_html(data.content)
             try:
                 await cur.execute("""
-                    INSERT INTO blogs (title, slug, excerpt, content, image_url, author, category,
+                    INSERT INTO blogs (title, slug, excerpt, content, content_md, image_url, author, category,
                         tags, published, meta_title, meta_description)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                """, (data.title, slug, data.excerpt, sanitize_html(data.content), data.image_url or "",
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (data.title, slug, data.excerpt, content, content_md, data.image_url or "",
                       data.author, data.category, json.dumps(data.tags or []),
                       int(data.published), data.meta_title or "", data.meta_description or ""))
             except pymysql.err.IntegrityError as e:
@@ -434,13 +470,20 @@ async def create_blog(data: BlogCreate, admin=Depends(get_current_admin)):
 @api_router.put("/blogs/{blog_id}")
 async def update_blog(blog_id: int, data: BlogUpdate, admin=Depends(get_current_admin)):
     fields, values = [], []
-    for k, v in data.model_dump(exclude_none=True).items():
+    updates = data.model_dump(exclude_none=True)
+    if "content_md" in updates:
+        # The Markdown source is the truth: store it and the HTML rendered from it.
+        updates["content_md"] = relative_image_urls(updates["content_md"])
+        updates["content"] = render_markdown(updates["content_md"])
+    elif "content" in updates:
+        # HTML from an older client: the stored Markdown no longer matches, so drop it.
+        updates["content"] = sanitize_html(updates["content"])
+        fields.append("content_md=NULL")
+    for k, v in updates.items():
         if k == "tags":
             v = json.dumps(v)
         elif k == "published":
             v = int(v)
-        elif k == "content":
-            v = sanitize_html(v)
         elif k == "slug":
             v = slugify(v)
             if not v:
@@ -967,6 +1010,7 @@ async def create_tables():
                     slug VARCHAR(500) UNIQUE NOT NULL,
                     excerpt TEXT,
                     content LONGTEXT,
+                    content_md LONGTEXT NULL,
                     image_url LONGTEXT,
                     author VARCHAR(255) DEFAULT 'SparkCurv Team',
                     category VARCHAR(255) DEFAULT 'Technology',
@@ -1007,6 +1051,15 @@ async def create_tables():
                     INDEX idx_bucket_time (bucket, created_at)
                 ) CHARACTER SET utf8mb4
             """)
+            # Databases created before the Markdown editor: add the source column once.
+            await cur.execute("""
+                SELECT COUNT(*) FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'blogs' AND COLUMN_NAME = 'content_md'
+            """)
+            (has_md,) = await cur.fetchone()
+            if not has_md:
+                await cur.execute("ALTER TABLE blogs ADD COLUMN content_md LONGTEXT NULL AFTER content")
+                logger.info("Added blogs.content_md")
             await conn.commit()
         logger.info("Tables ready")
     finally:
