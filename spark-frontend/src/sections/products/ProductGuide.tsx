@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, Check, Share2, type LucideIcon } from 'lucide-react';
-import { products, type Product } from '@/lib/products';
-import { ease } from '@/lib/tokens';
+import { products, type DataTag, type Product } from '@/lib/products';
+import { ease, palette } from '@/lib/tokens';
 import { SectionIntro } from '@/components/SectionIntro';
 
 const rise = (i = 0) => ({
@@ -72,13 +72,45 @@ export function GettingStarted({ product }: { product: Product }) {
   );
 }
 
-const dataCols: { key: 'in' | 'out' | 'share'; title: string; Icon: LucideIcon }[] = [
-  { key: 'in', title: 'Bring in', Icon: ArrowDownToLine },
-  { key: 'out', title: 'Take out', Icon: ArrowUpFromLine },
-  { key: 'share', title: 'Share and notify', Icon: Share2 },
+/*
+ * Format tags, coloured by family so a row says what it is before it's read: spreadsheets
+ * green, documents red, drawings and models amber, email blue, WhatsApp its own green,
+ * in-app and forms in the brand blue. The colour is a dot and a faint tint; the label stays
+ * in the text colour, so it reads in both schemes.
+ */
+const tagFamily: Record<DataTag, { label: string; color: string }> = {
+  csv: { label: 'CSV', color: '#22A06B' },
+  excel: { label: 'Excel', color: '#22A06B' },
+  xml: { label: 'Tally XML', color: '#22A06B' },
+  pdf: { label: 'PDF', color: '#E5484D' },
+  print: { label: 'Print', color: '#E5484D' },
+  dwg: { label: 'DWG', color: '#E0A33B' },
+  zip: { label: 'ZIP', color: '#E0A33B' },
+  '3d': { label: 'GLB', color: '#E0A33B' },
+  image: { label: 'Photo', color: '#E0A33B' },
+  form: { label: 'Web form', color: palette.spark.blue },
+  app: { label: 'In app', color: palette.spark.blue },
+  email: { label: 'Email', color: '#4C8DFF' },
+  whatsapp: { label: 'WhatsApp', color: '#25D366' },
+};
+
+function Tag({ tag }: { tag: DataTag }) {
+  const { label, color } = tagFamily[tag];
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[0.66rem] uppercase leading-none tracking-[0.1em] text-bone/85" style={{ background: `${color}1F` }}>
+      <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
+      {label}
+    </span>
+  );
+}
+
+const dataCols: { key: 'in' | 'out' | 'share'; title: string; hint: string; Icon: LucideIcon; color: string }[] = [
+  { key: 'in', title: 'Bring in', hint: 'Imports and uploads', Icon: ArrowDownToLine, color: palette.spark.blue },
+  { key: 'out', title: 'Take out', hint: 'Exports and documents', Icon: ArrowUpFromLine, color: '#22A06B' },
+  { key: 'share', title: 'Share and notify', hint: 'How people hear', Icon: Share2, color: '#E0A33B' },
 ];
 
-/** Data in and out: imports, exports and the channels documents travel on. */
+/** Data in and out: imports, exports and the channels documents travel on, each tagged by format. */
 export function DataInOut({ product }: { product: Product }) {
   return (
     <section aria-labelledby="data-title" className="py-24 md:py-32">
@@ -90,17 +122,30 @@ export function DataInOut({ product }: { product: Product }) {
           accent="Goes out cleanly."
           className="mb-12 md:mb-16"
         />
-        <div className="grid border-t md:grid-cols-3">
-          {dataCols.map(({ key, title, Icon }, ci) => (
-            <motion.div key={key} {...rise(ci)} className="border-b py-8 md:py-10 md:[&:not(:last-child)]:border-r md:[&:not(:first-child)]:pl-8 md:pr-8">
-              <h3 className="flex items-center gap-3 font-display text-xl tracking-[-0.015em] text-bone">
-                <Icon aria-hidden strokeWidth={1.5} className="h-5 w-5 text-bone/60" />
-                {title}
-              </h3>
-              <ul className="mt-5 space-y-3">
+        <div className="grid gap-5 md:grid-cols-3">
+          {dataCols.map(({ key, title, hint, Icon, color }, ci) => (
+            <motion.div key={key} {...rise(ci)} className="relative overflow-hidden rounded-3xl border p-6 md:p-7">
+              {/* Lane colour: a short rule along the top edge and a soft wash behind the heading. */}
+              <span aria-hidden className="absolute inset-x-0 top-0 h-[3px]" style={{ background: color }} />
+              <span aria-hidden className="pointer-events-none absolute -left-16 -top-24 h-48 w-48 rounded-full opacity-[0.14] blur-3xl" style={{ background: color }} />
+              <div className="relative flex items-center gap-4">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full" style={{ background: `${color}26` }}>
+                  <Icon aria-hidden strokeWidth={1.75} className="h-5 w-5 text-bone" />
+                </span>
+                <div>
+                  <h3 className="font-display text-xl leading-tight tracking-[-0.015em] text-bone">{title}</h3>
+                  <p className="mt-0.5 text-sm text-bone-muted">{hint}</p>
+                </div>
+              </div>
+              <ul className="relative mt-6 divide-y border-t">
                 {product.data[key].map((item) => (
-                  <li key={item} className="text-base leading-relaxed text-bone-muted">
-                    {item}
+                  <li key={item.text} className="py-4">
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.tags.map((t) => (
+                        <Tag key={t} tag={t} />
+                      ))}
+                    </div>
+                    <p className="mt-2.5 text-[0.95rem] leading-relaxed text-bone/85">{item.text}</p>
                   </li>
                 ))}
               </ul>

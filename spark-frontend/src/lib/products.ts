@@ -30,6 +30,10 @@ export type WalkStep = {
   notify?: Channel[];
 };
 
+/** Format tags for data items: spreadsheets, documents, files and channels. */
+export type DataTag = 'csv' | 'excel' | 'xml' | 'pdf' | 'print' | 'dwg' | 'zip' | '3d' | 'image' | 'form' | 'email' | 'whatsapp' | 'app';
+export type DataItem = { tags: DataTag[]; text: string };
+
 export type Product = {
   slug: ProductSlug;
   name: string;
@@ -66,7 +70,8 @@ export type Product = {
   /** Getting started, in order. */
   setupHeading: { lead: string; accent: string };
   setup: { title: string; detail: string }[];
-  data: { in: string[]; out: string[]; share: string[] };
+  /** Data in and out. Each item carries format tags (coloured by family in ProductGuide). */
+  data: { in: DataItem[]; out: DataItem[]; share: DataItem[] };
   fit: { yes: string[]; other: string[] };
   builtFor?: string[];
   /** Show the leakage calculator (BuildNexa's own, from buildnexa.io). */
@@ -348,24 +353,24 @@ const sitera: Product = {
   ],
   data: {
     in: [
-      'Leads from CSV, with a downloadable template',
-      'Website enquiries through a form you can embed or share',
-      'Drawings and documents, including DWG and ZIP, up to 20 MB',
-      '3D models (GLB or GLTF) up to 100 MB',
+      { tags: ['csv'], text: 'Leads, with a downloadable template' },
+      { tags: ['form'], text: 'Website enquiries through a form you can embed or share' },
+      { tags: ['dwg', 'zip', 'pdf'], text: 'Drawings and documents up to 20 MB' },
+      { tags: ['3d'], text: '3D models (GLB or GLTF) up to 100 MB' },
     ],
     out: [
-      'Company and project balance sheets as PDF or Excel, for any period',
-      'Change orders as PDF or Excel',
-      'Monthly staff attendance as Excel',
-      'Leads, stock issues and transfers as CSV',
-      'Print-ready purchase orders, quotations and invoices',
+      { tags: ['pdf', 'excel'], text: 'Company and project balance sheets, for any period' },
+      { tags: ['pdf', 'excel'], text: 'Change orders' },
+      { tags: ['excel'], text: 'Monthly staff attendance' },
+      { tags: ['csv'], text: 'Leads, stock issues and transfers' },
+      { tags: ['print'], text: 'Purchase orders, quotations and invoices' },
     ],
     share: [
-      'Estimate approval emails with Approve and Reject buttons',
-      'Purchase orders to vendors by email with the PDF, or on WhatsApp',
-      'Invoices on WhatsApp or by email',
-      'Payment receipts for change orders, emailed to the client',
-      'In-app alerts for new leads, stock requests, change orders and blocked work',
+      { tags: ['email'], text: 'Estimate approvals with Approve and Reject buttons' },
+      { tags: ['email', 'whatsapp'], text: 'Purchase orders to vendors, with the PDF' },
+      { tags: ['whatsapp', 'email'], text: 'Invoices to clients' },
+      { tags: ['email'], text: 'Payment receipts for change orders' },
+      { tags: ['app'], text: 'Alerts for new leads, stock requests, change orders and blocked work' },
     ],
   },
   fit: {
@@ -776,20 +781,20 @@ const buildnexa: Product = {
   ],
   data: {
     in: [
-      'Excel DPR workbooks: WBS, engineering, materials and construction status, plan vs actual, Gantt, issues and resources. Re-running updates rows instead of duplicating them.',
-      'WBS templates from the Setup Library, including a Solar EPC template that scales with plant size',
-      'Contractor invoices as PDF or photo, read into service bills for you to check',
+      { tags: ['excel'], text: 'DPR workbooks: WBS, engineering, materials and construction status, plan vs actual, Gantt, issues and resources. Re-running updates rows instead of duplicating them.' },
+      { tags: ['app'], text: 'WBS templates from the Setup Library, including a Solar EPC template that scales with plant size' },
+      { tags: ['pdf', 'image'], text: 'Contractor invoices, read into service bills for you to check' },
     ],
     out: [
-      'Tally-compatible XML of posted vouchers for any date range',
-      'CSV export on every table',
-      'Reports in Excel and PDF, with saved filters and schedules: trial balance, P&L, balance sheet, aging, cost to completion and more',
+      { tags: ['xml'], text: 'Tally-compatible vouchers for any date range' },
+      { tags: ['csv'], text: 'Every table' },
+      { tags: ['excel', 'pdf'], text: 'Reports with saved filters and schedules: trial balance, P&L, balance sheet, aging, cost to completion and more' },
     ],
     share: [
-      'Email when an approval is waiting or decided',
-      'Bills drafted from receipts and measurements, sent to accounts',
-      'Morning alerts for overdue items, escalated from the project manager to admins',
-      'WhatsApp and email reminders, including TDS on the 5th of each month',
+      { tags: ['email'], text: 'When an approval is waiting or decided' },
+      { tags: ['email'], text: 'Bills drafted from receipts and measurements, sent to accounts' },
+      { tags: ['app', 'email'], text: 'Morning alerts for overdue items, escalated from the project manager to admins' },
+      { tags: ['whatsapp', 'email'], text: 'Reminders, including TDS on the 5th of each month' },
     ],
   },
   fit: {
