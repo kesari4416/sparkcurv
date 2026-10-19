@@ -56,7 +56,8 @@ export function Team() {
             }
             className="mb-12 md:mb-16"
           />
-          <ul className="grid grid-cols-2 gap-4 md:gap-5 lg:grid-cols-4">
+          {/* Centred wrap rather than a grid, so a short last row (three people) stays in the middle. */}
+          <ul className="flex flex-wrap justify-center gap-4 md:gap-5">
             {about.team.map((m, i) => (
               <motion.li
                 key={m.name}
@@ -64,6 +65,7 @@ export function Team() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '0px 0px -10% 0px' }}
                 transition={{ duration: 0.9, ease: ease.out, delay: (i % 4) * 0.08 }}
+                className="w-[calc(50%-0.5rem)] md:w-[calc(50%-0.625rem)] lg:w-[calc(25%-0.9375rem)]"
               >
                 <button
                   ref={(el) => {
