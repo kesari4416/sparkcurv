@@ -45,7 +45,7 @@ export const about = {
   /** The live About FAQ answers are one-liners; these are the fuller answers from the live home page. */
   faqs: [
     { q: 'What services does SparkCurv offer?', a: 'SparkCurv provides a comprehensive suite of IT services including AI & ML Solutions, Managed Cloud Services, Application Development (Web & Mobile), Digital Marketing, Branding, and IT Outsourcing. We deliver end-to-end technology solutions tailored to your business needs.' },
-    { q: 'Where is SparkCurv located?', a: 'Our main branch is in Nagercoil, Tamil Nadu, and we have a sales office in Bangalore, Karnataka. We serve clients globally and offer both on-site and remote engagement models.' },
+    { q: 'Where is SparkCurv located?', a: 'We’re based in Nagercoil, Tamil Nadu. We serve clients globally and offer both on-site and remote engagement models.' },
     { q: 'What industries do you serve?', a: 'We serve a wide range of industries including E-commerce, Healthcare, Education, Finance, Real Estate, Travel, Food & Restaurant, Logistics, and more. Our cross-industry experience enables us to deliver domain-specific solutions.' },
     { q: 'Do you work with startups and enterprises?', a: 'Yes, we work with businesses of all sizes — from early-stage startups to established enterprises. Our flexible engagement models allow us to scale our services to match your project scope, budget, and timeline.' },
   ] satisfies Faq[],

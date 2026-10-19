@@ -73,7 +73,6 @@ export function Footer() {
                   {line}
                 </span>
               ))}
-              <span className="mt-2 block text-bone/60">{site.salesOffice}</span>
             </address>
           </div>
 

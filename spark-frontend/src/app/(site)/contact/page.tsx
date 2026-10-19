@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   title: { absolute: title },
   description,
   keywords:
-    'contact SparkCurv, IT consultation, software development company, hire developers, get project quote, web development company, mobile app development company, AI consulting, cloud services company, Nagercoil, Bangalore',
+    'contact SparkCurv, IT consultation, software development company, hire developers, get project quote, web development company, mobile app development company, AI consulting, cloud services company, Nagercoil',
   alternates: { canonical: '/contact' },
   openGraph: { title, description, url: '/contact', siteName: site.legalName, type: 'website' },
   twitter: { card: 'summary_large_image' },
@@ -53,7 +53,7 @@ export default function ContactPage() {
             <div>
               <h2 className={eyebrow}>
                 <MapPin aria-hidden strokeWidth={1.5} className={icon} />
-                Main branch · Nagercoil
+                Office · Nagercoil
               </h2>
               <address className="mt-5 not-italic leading-relaxed text-bone-muted">
                 {site.address.map((line) => (
@@ -62,7 +62,6 @@ export default function ContactPage() {
                   </span>
                 ))}
               </address>
-              <p className="mt-4 text-bone-muted">{site.salesOffice}</p>
             </div>
 
             <div>

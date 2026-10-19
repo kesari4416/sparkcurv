@@ -9,12 +9,12 @@ import { CTASlab } from '@/sections/CTASlab';
 
 const title = 'About Us | SparkCurv Technologies';
 const description =
-  'Learn about SparkCurv Technologies - a passionate IT company in Nagercoil & Bangalore with 15+ professionals delivering AI, cloud, app development, and digital marketing solutions.';
+  'Learn about SparkCurv Technologies - a passionate IT company in Nagercoil with 15+ professionals delivering AI, cloud, app development, and digital marketing solutions.';
 
 export const metadata: Metadata = {
   title: { absolute: title },
   description,
-  keywords: 'about SparkCurv, IT company India, technology partner, Nagercoil, Bangalore, software company',
+  keywords: 'about SparkCurv, IT company India, technology partner, Nagercoil, software company',
   alternates: { canonical: '/about' },
   openGraph: { title, description, url: '/about', siteName: site.legalName, type: 'website' },
   twitter: { card: 'summary_large_image' },

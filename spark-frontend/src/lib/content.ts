@@ -9,7 +9,6 @@ export const site = {
   email: 'sales@sparkcurv.com',
   phone: '+91 96774 95028',
   address: ['64/3 Thompson Street, Palace Road', 'Nagercoil, Tamil Nadu 629001'],
-  salesOffice: 'Sales office: Bangalore, Karnataka',
   /** Footer line from the live site. */
   tagline:
     'Turning ideas into digital brilliance. We craft sleek apps, stunning websites, and smart tech solutions to power your success.',
@@ -52,7 +51,7 @@ export const commitments = [
   { label: 'Proposal turnaround', value: '24–48 h' },
   { label: 'Working builds', value: 'Every 2 weeks' },
   { label: 'Project kick-off', value: '1–2 weeks' },
-  { label: 'Offices', value: 'Nagercoil · Bangalore' },
+  { label: 'Office', value: 'Nagercoil, Tamil Nadu' },
 ];
 
 /** Main navigation (home header + footer). All paths are live routes. */
@@ -278,7 +277,7 @@ export const faqs = [
   },
   {
     q: 'Where is SparkCurv located?',
-    a: 'Our main branch is in Nagercoil, Tamil Nadu, and we have a sales office in Bangalore, Karnataka. We serve clients globally and offer both on-site and remote engagement models.',
+    a: 'We’re based in Nagercoil, Tamil Nadu. We serve clients globally and offer both on-site and remote engagement models.',
   },
   {
     q: 'What industries do you serve?',
