@@ -18,6 +18,7 @@ export default function ThankYouPage() {
       primary={{ label: 'Back to home', href: '/' }}
       secondary={{ label: 'Read the blog', href: '/blog' }}
       redirectAfter={10}
+      align="center"
     />
   );
 }

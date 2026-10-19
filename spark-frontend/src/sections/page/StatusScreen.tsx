@@ -7,6 +7,7 @@ import { motion } from 'framer-motion';
 import { useUI } from '@/lib/store';
 import { ease, palette } from '@/lib/tokens';
 import { RevealText } from '@/components/RevealText';
+import { cn } from '@/lib/cn';
 
 type Action = { label: string; href: string };
 
@@ -19,10 +20,13 @@ type StatusScreenProps = {
   secondary?: Action;
   /** Seconds before sending the visitor to `primary.href`; omit for no redirect. */
   redirectAfter?: number;
+  /** Text and buttons on the left (default) or centred on the page. */
+  align?: 'left' | 'center';
 };
 
 /** Full-height message screen for the thank-you and not-found pages. */
-export function StatusScreen({ code, lead, accent, body, primary, secondary, redirectAfter }: StatusScreenProps) {
+export function StatusScreen({ code, lead, accent, body, primary, secondary, redirectAfter, align = 'left' }: StatusScreenProps) {
+  const centered = align === 'center';
   const play = useUI((s) => s.introDone);
   const router = useRouter();
   const [left, setLeft] = useState(redirectAfter ?? 0);
@@ -56,21 +60,24 @@ export function StatusScreen({ code, lead, accent, body, primary, secondary, red
           ].join(', '),
         }}
       />
-      <div className="mx-auto w-full max-w-site px-gutter">
-        <motion.p {...fade(0)} className="mb-8 flex items-center gap-3 font-mono text-eyebrow uppercase text-bone/60">
+      <div className={cn('mx-auto w-full max-w-site px-gutter', centered && 'text-center')}>
+        <motion.p {...fade(0)} className={cn('mb-8 flex items-center gap-3 font-mono text-eyebrow uppercase text-bone/60', centered && 'justify-center')}>
           <span aria-hidden className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-spark-blue" />
           {code}
         </motion.p>
         <h1 id="status-title" className="font-display text-display-lg text-bone">
           <RevealText text={lead} play={play} delay={0.1} />{' '}
-          <span className="block pl-[0.4em] md:pl-[1.1em]">
+          <span className={cn('block', !centered && 'pl-[0.4em] md:pl-[1.1em]')}>
             <RevealText text={accent} play={play} delay={0.3} wordClassName="text-gradient animate-gradient-pan pr-[0.06em] font-light" />
           </span>
         </h1>
-        <motion.p {...fade(0.6)} className="mt-10 max-w-[44ch] text-lg leading-relaxed text-bone-muted md:mt-14 md:text-xl">
+        <motion.p
+          {...fade(0.6)}
+          className={cn('mt-10 max-w-[44ch] text-lg leading-relaxed text-bone-muted md:mt-14 md:text-xl', centered && 'mx-auto')}
+        >
           {body}
         </motion.p>
-        <motion.div {...fade(0.7)} className="mt-10 flex flex-wrap items-center gap-x-8 gap-y-4">
+        <motion.div {...fade(0.7)} className={cn('mt-10 flex flex-wrap items-center gap-x-8 gap-y-4', centered && 'justify-center')}>
           <Link href={primary.href} className="group inline-flex items-center gap-3 rounded-full bg-bone px-7 py-4 text-base font-medium text-ink transition-colors hover:bg-bone/85">
             {primary.label}
             <span aria-hidden className="inline-block transition-transform duration-500 ease-expo-out group-hover:translate-x-1">
