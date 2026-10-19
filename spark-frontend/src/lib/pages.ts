@@ -36,7 +36,6 @@ export const about = {
     { name: 'Ponish Jino', role: 'Founder & CEO' },
     { name: 'Arun Kumar', role: 'Co-founder & CFO' },
     { name: 'Merbin Bejo', role: 'Project Manager · AI/ML Engineer' },
-    { name: 'Anu Sreekumar', role: 'Business Development Executive' },
   ],
   join: {
     title: 'Join our team',
