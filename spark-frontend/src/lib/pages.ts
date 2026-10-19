@@ -33,10 +33,10 @@ export const about = {
   mission:
     'To deliver cutting-edge, reliable, and scalable technology solutions that transform how businesses operate. We are committed to building long-term partnerships and combining technical expertise with creative thinking to turn ambitious ideas into market-ready digital products.',
   team: [
-    { name: 'Ponish Jino', role: 'Founder & CEO', image: '/images/team/mem-2.webp' },
-    { name: 'Arun Kumar', role: 'Co-founder & CFO', image: '/images/team/mem-1.webp' },
-    { name: 'Merbin Bejo', role: 'Project Manager · AI/ML Engineer', image: '/images/team/IMG_4214.webp' },
-    { name: 'Anu Sreekumar', role: 'Business Development Executive', image: '/images/team/mem-5.webp' },
+    { name: 'Ponish Jino', role: 'Founder & CEO' },
+    { name: 'Arun Kumar', role: 'Co-founder & CFO' },
+    { name: 'Merbin Bejo', role: 'Project Manager · AI/ML Engineer' },
+    { name: 'Anu Sreekumar', role: 'Business Development Executive' },
   ],
   join: {
     title: 'Join our team',

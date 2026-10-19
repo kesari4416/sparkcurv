@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import { useRef } from 'react';
 import { motion, useInView } from 'framer-motion';
 import { Compass, Telescope } from 'lucide-react';
@@ -108,10 +107,19 @@ export function VisionMission() {
   );
 }
 
+/** Initials for a team card: "Ponish Jino" becomes "PJ". */
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
 /**
- * Team portraits in full colour, name and role set on the photo. Hover (or focus within):
- * the photo eases in, a brand tint rises from the bottom and a gradient hairline lights
- * the frame, the same language as the home page tiles.
+ * Team cards without photos: a monogram in a glass disc, with name and role on the card.
+ * Hover (or focus within): the monogram eases up, a brand tint rises from the bottom and a
+ * gradient hairline lights the frame, the same language as the home page tiles.
  */
 export function Team() {
   return (
@@ -152,13 +160,11 @@ export function Team() {
                 className="absolute inset-0 animate-gradient-pan rounded-3xl bg-spark bg-[length:200%_100%] opacity-0 transition-opacity duration-700 group-hover:opacity-100"
               />
               <div className="relative aspect-[4/5] overflow-hidden rounded-[calc(1.5rem-1px)] bg-ink-800">
-                <Image
-                  src={m.image}
-                  alt={m.name}
-                  fill
-                  sizes="(min-width: 1024px) 25vw, 50vw"
-                  className="object-cover transition-transform duration-[1400ms] ease-expo-out group-hover:scale-[1.06]"
-                />
+                <div aria-hidden className="absolute inset-0 grid place-items-center">
+                  <span className="glass grid h-24 w-24 place-items-center rounded-full transition-transform duration-[1400ms] ease-expo-out group-hover:scale-[1.06] md:h-32 md:w-32">
+                    <span className="font-display text-3xl leading-none tracking-[-0.02em] text-gradient md:text-4xl">{initials(m.name)}</span>
+                  </span>
+                </div>
                 {/* Legibility scrim for the caption. */}
                 <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/20 to-transparent" />
                 {/* Brand tint rising from the bottom on hover. */}
