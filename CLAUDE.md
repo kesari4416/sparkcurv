@@ -29,7 +29,7 @@ There are two copies of this repo. Check which one you are editing.
 - **Copy comes from sparkcurv.com.** Fetch the live page before writing page copy. Never invent claims, customers, testimonials or metrics.
 - **Commit after each major verified change**, in `~/projects`:
   - pass the identity with `git -c user.name=Dharun -c user.email=dharun@sparkcurv.com commit ...`;
-  - end the message with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`;
+  - **never** add a `Co-Authored-By: Claude` line, or any other Claude/AI attribution, to commits or PRs (the user had it stripped from history);
   - remote `origin` is https://github.com/kesari4416/sparkcurv.git (public), local `master` → `main`; push only when asked, with Windows git (WSL git has no GitHub login).
 - **Don't name CSR Interiors** (a product customer) anywhere public.
 - **No floating WhatsApp button**; the user had it removed.
