@@ -55,7 +55,7 @@ export const about = {
     {
       name: 'Arun Kumar',
       role: 'Co-founder & CFO',
-      image: '/images/team/mem-1.webp',
+      image: '/images/team/arun-kumar.webp',
       linkedin: 'https://www.linkedin.com/in/arun-kumar-615b7b333',
       summary: 'Co-founder and CFO of SparkCurv Technologies. Looks after the company’s finances alongside the founding team.',
     },
