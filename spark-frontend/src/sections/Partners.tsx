@@ -68,7 +68,7 @@ export function Partners() {
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : undefined}
             transition={{ duration: 0.8, ease: ease.out }}
-            className="flex w-max animate-marquee group-hover:[animation-play-state:paused]"
+            className="flex w-max animate-[marquee_15s_linear_infinite] group-hover:[animation-play-state:paused]"
           >
             {[false, true].map((decorative) => (
               <div key={decorative ? 'copy' : 'set'} aria-hidden={decorative || undefined} className="flex shrink-0 gap-3 pr-3">
