@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { ArrowDownToLine, ArrowRight, ArrowUpFromLine, Check, Share2, type LucideIcon } from 'lucide-react';
-import { products, type DataTag, type Product } from '@/lib/products';
+import { products, type Product } from '@/lib/products';
 import { ease, palette } from '@/lib/tokens';
 import { SectionIntro } from '@/components/SectionIntro';
 
@@ -72,45 +72,13 @@ export function GettingStarted({ product }: { product: Product }) {
   );
 }
 
-/*
- * Format tags, coloured by family so a row says what it is before it's read: spreadsheets
- * green, documents red, drawings and models amber, email blue, WhatsApp its own green,
- * in-app and forms in the brand blue. The colour is a dot and a faint tint; the label stays
- * in the text colour, so it reads in both schemes.
- */
-const tagFamily: Record<DataTag, { label: string; color: string }> = {
-  csv: { label: 'CSV', color: '#22A06B' },
-  excel: { label: 'Excel', color: '#22A06B' },
-  xml: { label: 'Tally XML', color: '#22A06B' },
-  pdf: { label: 'PDF', color: '#E5484D' },
-  print: { label: 'Print', color: '#E5484D' },
-  dwg: { label: 'DWG', color: '#E0A33B' },
-  zip: { label: 'ZIP', color: '#E0A33B' },
-  '3d': { label: 'GLB', color: '#E0A33B' },
-  image: { label: 'Photo', color: '#E0A33B' },
-  form: { label: 'Web form', color: palette.spark.blue },
-  app: { label: 'In app', color: palette.spark.blue },
-  email: { label: 'Email', color: '#4C8DFF' },
-  whatsapp: { label: 'WhatsApp', color: '#25D366' },
-};
-
-function Tag({ tag }: { tag: DataTag }) {
-  const { label, color } = tagFamily[tag];
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-mono text-[0.66rem] uppercase leading-none tracking-[0.1em] text-bone/85" style={{ background: `${color}1F` }}>
-      <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
-      {label}
-    </span>
-  );
-}
-
 const dataCols: { key: 'in' | 'out' | 'share'; title: string; hint: string; Icon: LucideIcon; color: string }[] = [
   { key: 'in', title: 'Bring in', hint: 'Imports and uploads', Icon: ArrowDownToLine, color: palette.spark.blue },
   { key: 'out', title: 'Take out', hint: 'Exports and documents', Icon: ArrowUpFromLine, color: '#22A06B' },
   { key: 'share', title: 'Share and notify', hint: 'How people hear', Icon: Share2, color: '#E0A33B' },
 ];
 
-/** Data in and out: imports, exports and the channels documents travel on, each tagged by format. */
+/** Data in and out: imports, exports and the channels documents travel on. */
 export function DataInOut({ product }: { product: Product }) {
   return (
     <section aria-labelledby="data-title" className="py-24 md:py-32">
@@ -139,13 +107,8 @@ export function DataInOut({ product }: { product: Product }) {
               </div>
               <ul className="relative mt-6 divide-y border-t">
                 {product.data[key].map((item) => (
-                  <li key={item.text} className="py-4">
-                    <div className="flex flex-wrap gap-1.5">
-                      {item.tags.map((t) => (
-                        <Tag key={t} tag={t} />
-                      ))}
-                    </div>
-                    <p className="mt-2.5 text-[0.95rem] leading-relaxed text-bone/85">{item.text}</p>
+                  <li key={item} className="py-4 text-[0.95rem] leading-relaxed text-bone/85">
+                    {item}
                   </li>
                 ))}
               </ul>
