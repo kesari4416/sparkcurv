@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { Linkedin, X } from 'lucide-react';
 import { about, type TeamMember } from '@/lib/pages';
 import { site } from '@/lib/content';
 import { useUI } from '@/lib/store';
@@ -182,9 +182,11 @@ function TeamDialog({ id, member, onClose }: { id: string; member: TeamMember; o
             href={member.linkedin}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-6 block break-all font-bold text-bone underline decoration-bone/30 underline-offset-4 transition-colors duration-300 hover:decoration-bone"
+            aria-label={`${member.name} on LinkedIn`}
+            className="group/link mt-6 inline-flex items-center gap-2 font-bold text-bone transition-colors duration-300 hover:text-spark-blue"
           >
-            {member.linkedin}
+            LinkedIn
+            <Linkedin aria-hidden className="h-[1.05em] w-[1.05em] transition-transform duration-500 ease-expo-out group-hover/link:-translate-y-0.5" strokeWidth={2} />
           </a>
           <p className="mt-6 leading-relaxed text-bone/80">{member.summary}</p>
         </div>
