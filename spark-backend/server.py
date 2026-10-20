@@ -923,6 +923,8 @@ async def health():
 
 def send_enquiry_email(contact):
     if not SMTP_EMAIL or not SMTP_PASSWORD or not NOTIFY_EMAIL:
+        missing = [n for n, v in (("SMTP_EMAIL", SMTP_EMAIL), ("SMTP_PASSWORD", SMTP_PASSWORD), ("NOTIFY_EMAIL", NOTIFY_EMAIL)) if not v]
+        logger.warning("Enquiry saved but no email sent: %s not set in the backend environment", ", ".join(missing))
         return
     try:
         # Everything here is visitor input: escape it for HTML and keep it on one line in headers.
@@ -953,8 +955,10 @@ def send_enquiry_email(contact):
         with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=20) as server:
             server.login(SMTP_EMAIL, SMTP_PASSWORD)
             server.sendmail(SMTP_EMAIL, NOTIFY_EMAIL, msg.as_string())
+        logger.info("Enquiry email sent to %s", NOTIFY_EMAIL)
     except Exception as e:
-        logger.error(f"Email error: {e}")
+        # The visitor already got a success response; this line is the only trace of a failed email.
+        logger.error("Enquiry email FAILED (%s): %s", type(e).__name__, e)
 
 
 # ─── App Setup ────────────────────────────────────────────────────────────────
