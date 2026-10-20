@@ -66,7 +66,7 @@ that gets committed):
 | `JWT_SECRET` | a long random string: `python3 -c "import secrets; print(secrets.token_urlsafe(48))"` |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | the first admin login (10+ characters). Only used when no admin exists yet |
 | `CORS_ORIGINS` | leave empty for local development |
-| `SMTP_*`, `NOTIFY_EMAIL` | optional; leave empty and enquiry emails are simply skipped |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `CONTACT_TO` | optional; leave `SMTP_USER`, `SMTP_PASSWORD` and `CONTACT_TO` empty and enquiry emails are simply skipped. Test with `python smtp_check.py --send` |
 
 Start it:
 

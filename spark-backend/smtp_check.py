@@ -1,70 +1,63 @@
 """Check the enquiry-email setup without touching the website or the database.
 
-    python smtp_check.py          # reports which settings are set, then tries the mail login
-    python smtp_check.py --send   # also sends a test email to NOTIFY_EMAIL
+    python smtp_check.py          # shows the settings, then tries the mail login
+    python smtp_check.py --send   # also sends a test email to CONTACT_TO
 
-Settings come from the environment first, then from a .env file next to this script. In Docker
-the container environment is used, so run it inside the backend container:
-    docker exec <backend-container> python smtp_check.py
-Passwords are never printed.
+Reads the same settings as the backend (see mailer.py): from the environment first, then from
+the .env file next to this script. Passwords are never printed.
 """
-import os
 import smtplib
 import socket
 import sys
 from email.mime.text import MIMEText
-from pathlib import Path
 
-try:
-    from dotenv import load_dotenv
-
-    load_dotenv(Path(__file__).with_name(".env"))
-except ImportError:
-    pass
-
-HOST, PORT = "smtp.gmail.com", 465  # same as server.py
+import mailer
 
 
 def main() -> int:
-    smtp_email = os.environ.get("SMTP_EMAIL", "")
-    smtp_password = os.environ.get("SMTP_PASSWORD", "")
-    notify_email = os.environ.get("NOTIFY_EMAIL", "")
-
     print("Settings:")
-    print(f"  SMTP_EMAIL     {smtp_email or 'NOT SET'}")
-    print(f"  SMTP_PASSWORD  {'set (%d characters)' % len(smtp_password) if smtp_password else 'NOT SET'}")
-    print(f"  NOTIFY_EMAIL   {notify_email or 'NOT SET'}")
-    if not (smtp_email and smtp_password and notify_email):
-        print("\nResult: not configured. The backend skips the email when any of the three is missing.")
+    print(f"  SMTP_HOST      {mailer.HOST}")
+    print(f"  SMTP_PORT      {mailer.PORT}  ({'SSL' if mailer.PORT == 465 else 'STARTTLS'})")
+    print(f"  SMTP_USER      {mailer.USER or 'NOT SET'}")
+    print(f"  SMTP_PASSWORD  {'set (%d characters)' % len(mailer.PASSWORD) if mailer.PASSWORD else 'NOT SET'}")
+    print(f"  SMTP_FROM      {mailer.FROM or 'NOT SET'}")
+    print(f"  CONTACT_TO     {mailer.TO or 'NOT SET'}")
+
+    missing = mailer.missing()
+    if missing:
+        print(f"\nResult: not configured. {', '.join(missing)} not set, so the backend skips the email.")
         return 1
-    if " " in smtp_password:
+    if " " in mailer.PASSWORD:
         print("  note: the password contains spaces. Gmail shows app passwords in groups of four; remove the spaces.")
 
-    print(f"\nConnecting to {HOST}:{PORT} ...")
+    print(f"\nConnecting to {mailer.HOST}:{mailer.PORT} ...")
     try:
-        with smtplib.SMTP_SSL(HOST, PORT, timeout=20) as server:
+        with mailer.connect() as server:
             print("  connected")
-            server.login(smtp_email, smtp_password)
+            server.login(mailer.USER, mailer.PASSWORD)
             print("  login OK")
             if "--send" in sys.argv:
                 msg = MIMEText("Test email from smtp_check.py. The enquiry form can send mail from this server.")
                 msg["Subject"] = "SparkCurv enquiry email test"
-                msg["From"] = smtp_email
-                msg["To"] = notify_email
-                server.sendmail(smtp_email, notify_email, msg.as_string())
-                print(f"  test email sent to {notify_email}")
+                msg["From"] = mailer.FROM
+                msg["To"] = mailer.TO
+                server.sendmail(mailer.FROM_ADDRESS, mailer.TO, msg.as_string())
+                print(f"  test email sent to {mailer.TO}")
     except smtplib.SMTPAuthenticationError as e:
-        print(f"\nResult: Gmail rejected the login ({e.smtp_code}). The app password is wrong or revoked, "
-              "or the account does not allow app passwords (needs 2-Step Verification; for Google Workspace an "
-              "admin may have to allow it). Or SMTP_EMAIL is not a Google account.")
+        print(f"\nResult: the mail server rejected the login ({e.smtp_code}). Check SMTP_USER and SMTP_PASSWORD. "
+              "For Gmail it must be an app password (needs 2-Step Verification).")
         return 2
     except (socket.timeout, TimeoutError, ConnectionError, OSError) as e:
-        print(f"\nResult: cannot reach {HOST}:{PORT} ({type(e).__name__}: {e}). "
-              "The server or its hosting provider probably blocks outgoing mail on port 465.")
+        print(f"\nResult: cannot reach {mailer.HOST}:{mailer.PORT} ({type(e).__name__}: {e}). "
+              "Check SMTP_HOST and SMTP_PORT, and whether this server's firewall or provider blocks outgoing mail on that port.")
         return 3
+    except smtplib.SMTPException as e:
+        print(f"\nResult: the mail server answered with an error ({type(e).__name__}: {e}). "
+              "A wrong SMTP_PORT for the server (465 = SSL, 587 = STARTTLS) is a common cause.")
+        return 4
     except Exception as e:  # noqa: BLE001
         print(f"\nResult: failed ({type(e).__name__}: {e})")
-        return 4
+        return 5
 
     print("\nResult: OK" + (" (test email sent)" if "--send" in sys.argv else " (login works; add --send to send a test email)"))
     return 0

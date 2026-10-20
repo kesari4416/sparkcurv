@@ -25,7 +25,7 @@ from typing import List, Optional
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 import nh3
 from markdown_it import MarkdownIt
-import smtplib
+import mailer
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -43,9 +43,6 @@ if not JWT_SECRET:
 JWT_ALGORITHM  = "HS256"
 SESSION_HOURS  = 8
 COOKIE_SECURE  = os.environ.get("COOKIE_SECURE", "true").lower() != "false"
-SMTP_EMAIL     = os.environ.get("SMTP_EMAIL", "")
-SMTP_PASSWORD  = os.environ.get("SMTP_PASSWORD", "")
-NOTIFY_EMAIL   = os.environ.get("NOTIFY_EMAIL", "")
 
 # Cross-origin callers allowed to use the API. Not needed when the site and /api share
 # an origin (nginx.conf). FRONTEND_URL is still honoured for older .env files.
@@ -922,8 +919,8 @@ async def health():
 # ─── Email ────────────────────────────────────────────────────────────────────
 
 def send_enquiry_email(contact):
-    if not SMTP_EMAIL or not SMTP_PASSWORD or not NOTIFY_EMAIL:
-        missing = [n for n, v in (("SMTP_EMAIL", SMTP_EMAIL), ("SMTP_PASSWORD", SMTP_PASSWORD), ("NOTIFY_EMAIL", NOTIFY_EMAIL)) if not v]
+    missing = mailer.missing()
+    if missing:
         logger.warning("Enquiry saved but no email sent: %s not set in the backend environment", ", ".join(missing))
         return
     try:
@@ -933,8 +930,8 @@ def send_enquiry_email(contact):
         one_line = lambda s: re.sub(r"[\r\n]+", " ", str(s)).strip()[:150]
         msg = MIMEMultipart('alternative')
         msg['Subject'] = f'New Enquiry from {one_line(contact.name)} - {one_line(contact.services)}'
-        msg['From'] = SMTP_EMAIL
-        msg['To'] = NOTIFY_EMAIL
+        msg['From'] = mailer.FROM
+        msg['To'] = mailer.TO
         msg['Reply-To'] = one_line(contact.email)
         body = f"""<html><body style="font-family:Arial,sans-serif;">
             <div style="max-width:600px;margin:auto;background:white;border-radius:12px;">
@@ -952,10 +949,10 @@ def send_enquiry_email(contact):
             </div>
         </body></html>"""
         msg.attach(MIMEText(body, 'html'))
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=20) as server:
-            server.login(SMTP_EMAIL, SMTP_PASSWORD)
-            server.sendmail(SMTP_EMAIL, NOTIFY_EMAIL, msg.as_string())
-        logger.info("Enquiry email sent to %s", NOTIFY_EMAIL)
+        with mailer.connect() as server:
+            server.login(mailer.USER, mailer.PASSWORD)
+            server.sendmail(mailer.FROM_ADDRESS, mailer.TO, msg.as_string())
+        logger.info("Enquiry email sent to %s via %s:%s", mailer.TO, mailer.HOST, mailer.PORT)
     except Exception as e:
         # The visitor already got a success response; this line is the only trace of a failed email.
         logger.error("Enquiry email FAILED (%s): %s", type(e).__name__, e)

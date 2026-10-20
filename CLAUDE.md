@@ -110,7 +110,8 @@ Other content notes:
 - Markdown is rendered by markdown-it-py (CommonMark plus tables and strikethrough, `html: True`), then cleaned by nh3.
 - `blogs.content_md` (LONGTEXT NULL) is added automatically on startup if it is missing.
 - Saving `content_md` re-renders `content`. Saving HTML `content` clears `content_md`.
-- Tests: `spark-backend/tests/`. `test_markdown_blog.py` has 8 tests.
+- **Enquiry emails:** `mailer.py` reads `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`, `CONTACT_TO` (same names as the user's BuildNexa setup; the older `SMTP_EMAIL` and `NOTIFY_EMAIL` still work). Port 465 = SSL, other ports = STARTTLS. The live site is not on Docker. `python smtp_check.py --send` tests the setup. Failures are only logged (`Enquiry email FAILED`), because the visitor has already got a success response.
+- Tests: `spark-backend/tests/`. `test_markdown_blog.py` has 8 tests; `test_mailer.py` has 7 and needs no network or database.
 - **Test data:** the DB user can't create databases. Tests use the dev DB, so clean up any temporary admin users and posts afterwards.
 
 ## Checks before calling something done
