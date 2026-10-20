@@ -5,18 +5,19 @@ The marketing site and admin panel for SparkCurv Technologies (sparkcurv.com).
 
 ## Where things run (read first)
 
-There are two copies of this repo. Check which one you are editing.
+There is **one** copy of the project: `C:\Users\Dharun\SparkcurvTechnologies` (from WSL: `/mnt/c/Users/Dharun/SparkcurvTechnologies`). The user wants it kept that way. Never create a second copy, and don't use `~/projects` (an old duplicate there was deleted on 2026-10-20).
 
 | What | Where |
 |---|---|
-| Git repo of record, frontend dev server | WSL: `~/projects/SparkcurvTechnologies` (frontend on `:3000`) |
-| Backend (its `.venv` and `.env` live here) | Windows copy: `/mnt/c/Users/Dharun/SparkcurvTechnologies/spark-backend` (uvicorn on `:8001`) |
+| Frontend dev server, port `:3000` | `spark-frontend`, started with `yarn dev` from WSL |
+| Backend, uvicorn on port `:8001` | `spark-backend` (its `.venv` and `.env` live here) |
+| Git repo | this folder; `core.autocrlf` is `false` so files stay LF |
 
 - The frontend proxies `/api` to **port 8001**. A backend on 8000 makes admin login return 500.
 - The user usually has both servers running. Check `:3000` and `:8001` before starting anything, and leave no stray servers behind.
 - When you start the backend from Windows, use `setsid nohup` inside WSL so it stays detached. Otherwise it exits with code 9.
-- Edit the backend in the Windows copy, then copy the changed files into `~/projects` before committing.
-- The frontend in the Windows copy is **stale**. Edit and run the frontend in `~/projects`.
+- If frontend edits don't show up in `yarn dev` (files on `/mnt/c` can miss file-change events), run `WATCHPACK_POLLING=true yarn dev`.
+- Before 2026-10-20 the frontend lived in a WSL copy and this folder was stale. If `localhost:3000` ever shows an old site, check which folder the server was started from.
 
 ### Running commands from Git Bash
 
@@ -27,10 +28,10 @@ There are two copies of this repo. Check which one you are editing.
 ## Standing rules from the user
 
 - **Copy comes from sparkcurv.com.** Fetch the live page before writing page copy. Never invent claims, customers, testimonials or metrics.
-- **Commit after each major verified change**, in `~/projects`:
+- **Commit after each major verified change**, in this folder:
   - pass the identity with `git -c user.name=Dharun -c user.email=dharun@sparkcurv.com commit ...`;
   - **never** add a `Co-Authored-By: Claude` line, or any other Claude/AI attribution, to commits or PRs (the user had it stripped from history);
-  - remote `origin` is https://github.com/kesari4416/sparkcurv.git (public), local `master` → `main`; push only when asked, with Windows git (WSL git has no GitHub login).
+  - remote `origin` is https://github.com/kesari4416/sparkcurv.git (public), local `master` → `main`; push only when the user asks, with Windows git from this folder (`git push origin master:main`; WSL git has no GitHub login).
 - **Don't name CSR Interiors** (a product customer) anywhere public.
 - **No floating WhatsApp button**; the user had it removed.
 - **No AI-slop styling.** Use icons sparingly and avoid decorative tag rows. The user rejected greyscale-until-hover photos and a custom cursor; the site uses the normal system cursor.
